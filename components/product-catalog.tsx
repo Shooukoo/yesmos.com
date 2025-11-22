@@ -39,7 +39,7 @@ export function ProductCatalog() {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const response = await fetch("/api/refacciones")
+                const response = await fetch("api/refacciones.php") // Ruta relativa al archivo PHP
                 if (!response.ok) throw new Error("Error fetching data")
                 const data = await response.json()
                 setProducts(data)
