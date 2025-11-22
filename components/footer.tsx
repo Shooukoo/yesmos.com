@@ -13,7 +13,7 @@ export function Footer() {
               Sahuayo.
             </p>
             <div className="flex space-x-4">
-              <Link href="#" className="text-gray-400 hover:text-[#3b82f6] transition-colors">
+              <Link href="https://www.facebook.com/share/16TwD7pnDJ/" className="text-gray-400 hover:text-[#3b82f6] transition-colors">
                 <Facebook className="h-5 w-5" />
                 <span className="sr-only">Facebook</span>
               </Link>
@@ -66,11 +66,11 @@ export function Footer() {
             <ul className="space-y-3 text-sm text-gray-400">
               <li className="flex items-start gap-2">
                 <MapPin className="h-5 w-5 text-[#3b82f6] shrink-0" />
-                <span>Av. Constitución #123, Centro, Sahuayo, Michoacán</span>
+                <span>Av. Constitución #206, Centro, Sahuayo, Michoacán</span>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="h-5 w-5 text-[#3b82f6] shrink-0" />
-                <span>+52 353 123 4567</span>
+                <span>+52 353 184 4881</span>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="h-5 w-5 text-[#3b82f6] shrink-0" />

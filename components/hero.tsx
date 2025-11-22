@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Search, Smartphone } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 
 export function Hero() {
   return (
@@ -19,28 +20,35 @@ export function Hero() {
               y confianza en un solo lugar.
             </p>
             <div className="flex flex-col gap-2 min-[400px]:flex-row">
-              <Button className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white h-11 px-8">
-                <Smartphone className="mr-2 h-4 w-4" />
-                Ver Catálogo de Celulares
-              </Button>
-              <Button
-                variant="outline"
-                className="border-[#3b82f6] text-[#3b82f6] hover:bg-[#3b82f6]/10 h-11 px-8 bg-transparent"
-              >
-                <Search className="mr-2 h-4 w-4" />
-                Buscar Refacciones
-              </Button>
+              {/* Botón Principal: Lleva al catálogo/refacciones */}
+              <Link href="#catalogo" className="w-full sm:w-auto">
+                <Button className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white h-11 px-8 w-full">
+                  <Smartphone className="mr-2 h-4 w-4" />
+                  Ver Catálogo
+                </Button>
+              </Link>
+              
+              {/* Botón Secundario: También lleva al catálogo para buscar */}
+              <Link href="#catalogo" className="w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  className="border-[#3b82f6] text-[#3b82f6] hover:bg-[#3b82f6]/10 h-11 px-8 bg-transparent w-full"
+                >
+                  <Search className="mr-2 h-4 w-4" />
+                  Buscar Refacciones
+                </Button>
+              </Link>
             </div>
           </div>
           <div className="mx-auto lg:ml-auto flex items-center justify-center">
             <div className="relative w-full max-w-[500px] aspect-square">
               <div className="absolute inset-0 bg-gradient-to-tr from-[#9ec7e8] to-[#3b82f6] rounded-full opacity-20 blur-3xl" />
               <Image
-                src="/smartphone-repair-illustration.jpg"
+                src="/prueba3.jpg" // Usamos tu imagen real
                 alt="Reparación de celulares"
                 width={500}
                 height={500}
-                className="relative z-10 object-contain"
+                className="relative z-10 object-contain rounded-xl shadow-lg"
                 priority
               />
             </div>
