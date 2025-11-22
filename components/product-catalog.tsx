@@ -117,7 +117,7 @@ export function ProductCatalog() {
                 <div className="relative w-full">
                     <Input
                         type="text"
-                        placeholder="Buscar refacción (ej: Display Samsung A54)..."
+                        placeholder="Buscar refacción..."
                         className="h-12 w-full rounded-r-none border-blue-300 bg-white pl-4 text-base focus-visible:ring-blue-500 shadow-sm"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
