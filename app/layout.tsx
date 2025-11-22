@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     siteName: "Yesmos.com",
     images: [
       {
-        url: "/Logo_Yesmos_Celu_Azul.png", // Usamos tu logo como imagen principal
+        url: "/opg-yesmos-celulares.png", // Usamos tu logo como imagen principal
         width: 1200,
         height: 630,
         alt: "Yesmos Celulares Logo",
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Yesmos Celulares",
     description: "Refacciones, celulares y servicio técnico en Sahuayo.",
-    images: ["/Logo_Yesmos_Celu_Azul.png"],
+    images: ["/opg-yesmos-celulares.png"],
     creator: "@yesmos", // Tu usuario de twitter si tienes
   },
   robots: {

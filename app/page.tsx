@@ -23,7 +23,7 @@ export default function Home() {
         <ServicesSection />
 
         {/* CTA Section */}
-        <section className="py-12 md:py-24 bg-[#3b82f6] text-white">
+        <section className="py-12 md:py-24 bg-[#3b82f6] text-white" id="contacto">
           <div className="container px-4 md:px-6 mx-auto text-center">
             <h2 className="text-3xl font-bold tracking-tighter mb-4">
               ¿Necesitas soporte técnico?

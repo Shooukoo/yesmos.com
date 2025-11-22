@@ -37,6 +37,7 @@ export function Footer() {
                   Refacciones
                 </Link>
               </li>
+              {/*
               <li>
                 <Link href="#celulares" className="hover:text-[#3b82f6] transition-colors">
                   Celulares
@@ -47,6 +48,8 @@ export function Footer() {
                   Cotizador
                 </Link>
               </li>
+              */}
+              
             </ul>
           </div>
 
