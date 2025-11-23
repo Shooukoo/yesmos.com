@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Badge } from "@/components/ui/badge"
 
 interface Product {
     id: number
@@ -46,7 +47,6 @@ export function ProductCatalog() {
                 const response = await fetch(apiUrl)
 
                 if (!response.ok) {
-                    // Si falla el PHP (ej. en local si no existe), intentamos la ruta de API por si acaso
                     if (apiUrl.includes('.php')) {
                         console.warn("Fallo carga PHP, intentando API route...");
                         const retry = await fetch("/api/refacciones");
@@ -111,16 +111,21 @@ export function ProductCatalog() {
 
             {/* Cabecera de Tienda */}
             <div className="mb-12 flex flex-col items-center gap-8 md:flex-row md:items-start md:justify-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="flex h-32 w-32 flex-shrink-0 items-center justify-center rounded-lg border bg-white p-2 shadow-sm">
-                    {/* Logo o Texto */}
-                    <div className="text-center">
-                        <span className="block text-2xl font-black text-[#3b82f6]">Yesmos</span>
-                        <span className="text-xs font-bold text-gray-400 tracking-widest">REFACCIONES</span>
+                <div className="flex h-32 w-32 flex-shrink-0 items-center justify-center rounded-lg border bg-white p-2 shadow-sm overflow-hidden">
+                    <div className="relative h-full w-full">
+                        <Image
+                            src="/Logo_Yesmos_Celu_Azul.png"
+                            alt="Logo Yesmos Refacciones"
+                            fill
+                            className="object-contain"
+                            priority
+                        />
                     </div>
                 </div>
+
                 <div className="text-center md:text-left w-full md:w-auto">
                     <h1 className="mb-2 text-3xl font-bold text-gray-900">CATÁLOGO DIGITAL</h1>
-                    <p className="mb-4 text-gray-500">Refacciones y Accesorios en Tiempo Real</p>
+                    <p className="mb-4 text-gray-500">Refacciones en Tiempo Real</p>
                     <div className="space-y-1 text-sm text-gray-600 bg-gray-50 p-3 rounded-md inline-block w-full md:w-auto">
                         <p className="flex items-center justify-center gap-2 md:justify-start">
                             <MapPin className="h-4 w-4 text-[#3b82f6]" />
@@ -139,7 +144,7 @@ export function ProductCatalog() {
                 <div className="relative w-full">
                     <Input
                         type="text"
-                        placeholder="Buscar refacción (ej: Display Samsung A32)..."
+                        placeholder="Buscar refacción..."
                         className="h-12 w-full rounded-r-none border-gray-300 bg-white pl-4 text-base focus-visible:ring-[#3b82f6] focus-visible:border-[#3b82f6]"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -196,7 +201,6 @@ export function ProductCatalog() {
                                 key={product.id}
                                 className="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:shadow-lg hover:border-[#3b82f6]/30 animate-in fade-in zoom-in-95 duration-300"
                             >
-                                {/* Imagen: Ahora es un link */}
                                 <div className="aspect-square relative mb-0 overflow-hidden bg-white border-b border-gray-50">
                                     <a href={product.url} target="_self" className="block h-full w-full p-4" title="img-product">
                                         <Image
