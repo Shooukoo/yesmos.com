@@ -198,7 +198,7 @@ export function ProductCatalog() {
                             >
                                 {/* Imagen: Ahora es un link */}
                                 <div className="aspect-square relative mb-0 overflow-hidden bg-white border-b border-gray-50">
-                                    <a href={product.url} target="_self" className="block h-full w-full p-4">
+                                    <a href={product.url} target="_self" className="block h-full w-full p-4" title="img-product">
                                         <Image
                                             src={product.image && product.image.startsWith('http') ? product.image : "/placeholder.svg"}
                                             alt={product.name}
