@@ -111,9 +111,22 @@ export function ProductCatalog() {
 
             {/* Cabecera de Tienda */}
             <div className="mb-12 flex flex-col items-center gap-8 md:flex-row md:items-start md:justify-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                {/* Logo de la tienda (ACTUALIZADO) */}
+                <div className="flex h-32 w-32 flex-shrink-0 items-center justify-center rounded-lg border bg-white p-2 shadow-sm overflow-hidden">
+                    <div className="relative h-full w-full">
+                        <Image
+                            src="/logo-yesmos.png"
+                            alt="Logo Yesmos Refacciones"
+                            fill
+                            className="object-contain"
+                            priority
+                        />
+                    </div>
+                </div>
+
                 <div className="text-center md:text-left w-full md:w-auto">
                     <h1 className="mb-2 text-3xl font-bold text-gray-900">CATÁLOGO DIGITAL</h1>
-                    <p className="mb-4 text-gray-500">Refacciones en Tiempo Real</p>
+                    <p className="mb-4 text-gray-500">Refacciones y Accesorios en Tiempo Real</p>
                     <div className="space-y-1 text-sm text-gray-600 bg-gray-50 p-3 rounded-md inline-block w-full md:w-auto">
                         <p className="flex items-center justify-center gap-2 md:justify-start">
                             <MapPin className="h-4 w-4 text-[#3b82f6]" />
