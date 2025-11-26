@@ -15,10 +15,12 @@ export default function Home() {
     <div className="flex min-h-screen flex-col bg-[#f9fafb]">
       <Header />
       <main className="flex-1">
-        <Hero />
+        
         
         {/* Reemplazamos el carrusel por el catálogo completo */}
         <ProductCatalog />
+
+        <Hero />
         
         <ServicesSection />
 

@@ -237,13 +237,12 @@ export function ProductCatalog() {
 
                     {/* Botón Cargar Más */}
                     {visibleCount < filteredProducts.length && (
-                        <div className="mt-12 flex justify-center">
+                        <div className="mt-16 flex justify-center pb-8">
                             <Button
                                 onClick={handleLoadMore}
-                                variant="outline"
-                                className="min-w-[200px] border-blue-200 text-[#3b82f6] hover:bg-blue-50 hover:text-blue-700 font-medium"
+                                className="min-w-[250px] bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold h-12 rounded-full shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 text-base"
                             >
-                                <ChevronDown className="mr-2 h-4 w-4" />
+                                <ChevronDown className="mr-2 h-5 w-5" />
                                 Cargar más productos
                             </Button>
                         </div>
