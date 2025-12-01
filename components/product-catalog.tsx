@@ -112,10 +112,10 @@ export function ProductCatalog() {
             {/* Cabecera de Tienda */}
             <div className="mb-12 flex flex-col items-center gap-8 md:flex-row md:items-start md:justify-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 {/* Logo de la tienda (ACTUALIZADO) */}
-                <div className="flex h-32 w-32 flex-shrink-0 items-center justify-center rounded-lg border bg-white p-2 shadow-sm overflow-hidden">
+                <div className="flex h-32 w-32 flex-shrink-0 items-center justify-center rounded-lg border bg-blue-50 p-3 shadow-sm overflow-hidden">
                     <div className="relative h-full w-full">
                         <Image
-                            src="/logo-yesmos.png"
+                            src="/Logo_Yesmos_Celu_Azul.png"
                             alt="Logo Yesmos Refacciones"
                             fill
                             className="object-contain"
