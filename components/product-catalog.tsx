@@ -35,11 +35,15 @@ export function ProductCatalog() {
     // Estado para paginación
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE)
 
-    // 1. Carga de datos (Lógica Híbrida Local/HostGator)
+    // 1. Carga de datos (Lógica Híbrida Local/Producción)
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                // En desarrollo usa la API de Next.js, en producción busca el archivo PHP
+                /**
+                 * DETERMINACIÓN DE LA RUTA:
+                 * - En desarrollo (npm run dev) usa la ruta de Next.js que configuramos con Cheerio.
+                 * - En producción (sitio exportado) busca el archivo físico .php en tu hosting.
+                 */
                 const apiUrl = process.env.NODE_ENV === 'development'
                     ? "/api/refacciones"
                     : "api/refacciones.php";
@@ -47,8 +51,9 @@ export function ProductCatalog() {
                 const response = await fetch(apiUrl)
 
                 if (!response.ok) {
+                    // Fallback: Si el archivo PHP no responde, intenta rescatar con la ruta de la API interna
                     if (apiUrl.includes('.php')) {
-                        console.warn("Fallo carga PHP, intentando API route...");
+                        console.warn("Fallo carga PHP, intentando API route local...");
                         const retry = await fetch("/api/refacciones");
                         if (retry.ok) {
                             const data = await retry.json();
@@ -75,7 +80,7 @@ export function ProductCatalog() {
         setVisibleCount(ITEMS_PER_PAGE)
     }, [searchQuery, selectedCategory])
 
-    // 2. Obtener categorías únicas del scraping
+    // 2. Obtener categorías únicas dinámicamente
     const categories = ["Todos", ...Array.from(new Set(products.map((p) => p.category))).sort()]
 
     // 3. Filtrado
@@ -111,7 +116,6 @@ export function ProductCatalog() {
 
             {/* Cabecera de Tienda */}
             <div className="mb-12 flex flex-col items-center gap-8 md:flex-row md:items-start md:justify-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                {/* Logo de la tienda (ACTUALIZADO) */}
                 <div className="flex h-32 w-32 flex-shrink-0 items-center justify-center rounded-lg border bg-blue-50 p-3 shadow-sm overflow-hidden">
                     <div className="relative h-full w-full">
                         <Image
@@ -205,7 +209,9 @@ export function ProductCatalog() {
                                 <div className="aspect-square relative mb-0 overflow-hidden bg-white border-b border-gray-50">
                                     <a href={product.url} target="_self" className="block h-full w-full p-4" title="img-product">
                                         <Image
-                                            src={product.image && product.image.startsWith('http') ? product.image : "/placeholder.svg"}
+                                            src={product.image && product.image.startsWith('http')
+                                                ? product.image
+                                                : "https://placehold.co/400x400?text=Sin+Imagen"}
                                             alt={product.name}
                                             fill
                                             className="object-contain p-2 transition-transform duration-300 group-hover:scale-110"
@@ -217,9 +223,9 @@ export function ProductCatalog() {
                                 {/* Contenido */}
                                 <div className="flex flex-1 flex-col p-4">
                                     <div className="mb-3">
-                                        <span className="inline-block text-[10px] font-bold text-[#3b82f6] bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
+                                        <Badge variant="secondary" className="mb-2 text-[#3b82f6] bg-blue-50 uppercase text-[10px] font-bold">
                                             {product.category}
-                                        </span>
+                                        </Badge>
                                         <h3 className="text-sm font-medium text-gray-900 line-clamp-2 min-h-[40px] leading-snug" title={product.name}>
                                             {product.name}
                                         </h3>
@@ -231,7 +237,6 @@ export function ProductCatalog() {
                                         </p>
 
                                         <div className="grid grid-cols-1 gap-2">
-                                            {/* Botón Ver (Enlace Real en la misma pestaña) */}
                                             <Button
                                                 asChild
                                                 variant="outline"
