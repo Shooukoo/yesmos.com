@@ -725,12 +725,7 @@ export default function CotizadorPage() {
                 message += `Tel: ${companyData.phone}`
             }
         }
-
-        // --- CAMBIO: Solo agrega el mensaje si existe el nombre del taller ---
-        if (companyData.name) {
-            message += `\n\nEsta cotización puede tener cambios, por favor contacte al taller de reparación ${companyData.name}`
-        }
-        // -------------------------------------------------------------------
+        message += `\n\nEsta cotización puede tener cambios, por favor contacte al taller de reparación ${companyData.name || ""}`
 
         window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`, "_blank")
         toast.success("Abriendo WhatsApp...")
