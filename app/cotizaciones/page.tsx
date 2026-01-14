@@ -655,7 +655,7 @@ export default function CotizadorPage() {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const apiUrl = process.env.NODE_ENV === "development" ? "/api/refacciones" : "api/refacciones.php"
+                const apiUrl = process.env.NODE_ENV === "development" ? "/api/refacciones" : "/api/refacciones.php"
                 const response = await fetch(apiUrl)
                 let data: ProductBase[] = []
                 if (response.ok) {

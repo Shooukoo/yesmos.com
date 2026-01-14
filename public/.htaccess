@@ -1,0 +1,22 @@
+# Archivo public/.htaccess
+
+Options -MultiViews
+RewriteEngine On
+
+# 1. Quitar la extensión .html de la URL (estético)
+RewriteCond %{THE_REQUEST} \s/+(.+?)\.html[\s?] [NC]
+RewriteRule ^ /%1 [R=301,L]
+
+# 2. Si la petición es un archivo o carpeta real, sírvelo directamente
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# 3. Si piden /carpeta, intentar servir /carpeta.html
+RewriteCond %{REQUEST_FILENAME}.html -f
+RewriteRule ^([^\.]+)$ $1.html [NC,L]
+
+# 4. Fallback para rutas dinámicas (SPA) -> Enviar todo al index si no encuentra nada
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.html [L]

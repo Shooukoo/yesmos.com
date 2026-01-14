@@ -5,6 +5,7 @@ import './globals.css'
 import { Suspense } from "react"
 import { Toaster } from "@/components/ui/sonner"
 import { Inter as V0_Font_Inter, Geist_Mono as V0_Font_Geist_Mono, Source_Serif_4 as V0_Font_Source_Serif_4 } from 'next/font/google'
+import Script from 'next/script' // <--- Importamos Script para mejor manejo (opcional, pero nativo es mejor aqui)
 
 // Initialize fonts
 const _inter = V0_Font_Inter({ subsets: ['latin'], weight: ["100","200","300","400","500","600","700","800","900"], variable: '--font-sans' })
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
   authors: [{ name: "Yesmos Celulares" }],
   creator: "Yesmos Celulares",
   publisher: "Yesmos Celulares",
-  metadataBase: new URL("https://www.yesmos.com"), // Tu dominio real
+  metadataBase: new URL("https://www.yesmos.com"),
   alternates: {
     canonical: "/",
   },
@@ -43,7 +44,7 @@ export const metadata: Metadata = {
     siteName: "Yesmos.com",
     images: [
       {
-        url: "/opg-yesmos-celulares.png", // Usamos tu logo como imagen principal
+        url: "/opg-yesmos-celulares.png",
         width: 1200,
         height: 630,
         alt: "Yesmos Celulares Logo",
@@ -57,7 +58,7 @@ export const metadata: Metadata = {
     title: "Yesmos Celulares",
     description: "Refacciones, celulares y servicio técnico en Sahuayo.",
     images: ["/opg-yesmos-celulares.png"],
-    creator: "@yesmos", // Tu usuario de twitter si tienes
+    creator: "@yesmos",
   },
   robots: {
     index: true,
@@ -95,9 +96,61 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Definimos los datos estructurados para Google
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness", // Indica que es un negocio local físico
+    "name": "Yesmos Celulares",
+    "image": "https://www.yesmos.com/opg-yesmos-celulares.png",
+    "logo": "https://www.yesmos.com/Logo_Yesmos_Celu_Azul.png", // <--- ESTO ES LO QUE BUSCA GOOGLE
+    "description": "Venta de celulares, refacciones originales y servicio técnico especializado en Sahuayo.",
+    "telephone": "+523531844881",
+    "url": "https://www.yesmos.com",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Av. Constitución #206",
+      "addressLocality": "Sahuayo",
+      "addressRegion": "Michoacán",
+      "postalCode": "59000",
+      "addressCountry": "MX"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 20.0587903, 
+      "longitude": -102.7162354
+    },
+    "openingHoursSpecification": [
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        "opens": "09:30",
+        "closes": "14:30" 
+      },
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        "opens": "16:30", 
+        "closes": "20:00" 
+      },
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Saturday", "Sunday"],
+        "opens": "09:30",
+        "closes": "15:00"
+      }
+    ],
+    "priceRange": "$$"
+  };
+
   return (
     <html lang="es">
       <body className={`${_inter.variable} font-sans antialiased`}>
+        {/* Script JSON-LD inyectado para SEO */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        
         <Suspense>
           {children}
         </Suspense>
