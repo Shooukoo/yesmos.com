@@ -34,6 +34,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
+// --- CONSTANTES ---
+const ITEMS_PER_PAGE = 15; // Cantidad de productos a cargar por bloque
+const STORAGE_KEY = "YESMOS_POS_V1"; // Clave para guardar en el navegador
+
 // --- TIPOS ---
 interface ProductBase {
     id: number
@@ -142,7 +146,8 @@ const ProductCard = ({ product, onAdd }: { product: ProductWithPrice; onAdd: (p:
             {/* Imagen con efecto zoom */}
             <div className="relative h-36 sm:h-40 bg-gradient-to-br from-gray-50 to-white p-3 flex items-center justify-center overflow-hidden">
                 <Image
-                    src={product.image && product.image.startsWith("http") ? product.image : "/placeholder.svg"}
+                    // FIX: Usar placeholder online si la imagen no es válida o local
+                    src={product.image && product.image.startsWith("http") ? product.image : "https://placehold.co/400x400?text=Sin+Imagen"}
                     alt={product.name}
                     fill
                     className="object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500 ease-out p-2"
@@ -593,6 +598,12 @@ export default function CotizadorPage() {
     const [laborCost, setLaborCost] = useState("")
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedCategory, setSelectedCategory] = useState("Todos")
+    
+    // Estado para saber si ya cargamos datos del LocalStorage
+    const [isInitialized, setIsInitialized] = useState(false)
+
+    // NUEVO: Estado para paginación
+    const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE)
 
     const [companyData, setCompanyData] = useState<CompanyData>({
         name: "",
@@ -603,6 +614,42 @@ export default function CotizadorPage() {
     })
 
     const fileInputRef = useRef<HTMLInputElement>(null)
+
+    // 1. EFECTO DE CARGA INICIAL (PERSISTENCIA)
+    useEffect(() => {
+        // Intentar leer LocalStorage al montar el componente
+        const savedState = localStorage.getItem(STORAGE_KEY);
+        if (savedState) {
+            try {
+                const parsed = JSON.parse(savedState);
+                if (parsed.cart) setCart(parsed.cart);
+                if (parsed.clientName) setClientName(parsed.clientName);
+                if (parsed.clientPhone) setClientPhone(parsed.clientPhone);
+                if (parsed.laborCost) setLaborCost(parsed.laborCost);
+                if (parsed.companyData) setCompanyData(parsed.companyData);
+                // toast.info("Sesión recuperada", { position: "bottom-center", duration: 2000 });
+            } catch (e) {
+                console.error("Error al leer LocalStorage", e);
+            }
+        }
+        setIsInitialized(true); // Marcar como inicializado para permitir guardar cambios futuros
+    }, []);
+
+    // 2. EFECTO DE GUARDADO AUTOMÁTICO
+    useEffect(() => {
+        // Solo guardar si ya se cargaron los datos iniciales
+        if (isInitialized) {
+            const stateToSave = {
+                cart,
+                clientName,
+                clientPhone,
+                laborCost,
+                companyData
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+        }
+    }, [cart, clientName, clientPhone, laborCost, companyData, isInitialized]);
+
 
     // Fetch de productos
     useEffect(() => {
@@ -636,6 +683,11 @@ export default function CotizadorPage() {
         fetchProducts()
     }, [])
 
+    // Reiniciar paginación al cambiar filtros o búsqueda
+    useEffect(() => {
+        setVisibleCount(ITEMS_PER_PAGE)
+    }, [searchQuery, selectedCategory])
+
     // Funciones del carrito
     const addToCart = (product: ProductWithPrice) => {
         const newItem: CartItem = { ...product, cartId: crypto.randomUUID() }
@@ -653,8 +705,11 @@ export default function CotizadorPage() {
     }
 
     const clearCart = () => {
+        // Limpiamos el carrito, pero mantenemos los datos de la empresa si el usuario los puso
         setCart([])
         setLaborCost("")
+        setClientName("")
+        setClientPhone("")
         toast.info("Ticket vaciado", { duration: 1000, position: "bottom-center" })
     }
 
@@ -683,6 +738,16 @@ export default function CotizadorPage() {
             return matchSearch && matchCat
         })
     }, [products, searchQuery, selectedCategory])
+
+    // NUEVO: Productos visibles recortados por la paginación
+    const displayedProducts = useMemo(() => {
+        return filteredProducts.slice(0, visibleCount)
+    }, [filteredProducts, visibleCount])
+
+    // NUEVO: Manejador para cargar más
+    const handleLoadMore = () => {
+        setVisibleCount((prev) => prev + ITEMS_PER_PAGE)
+    }
 
     const handleSendWhatsApp = () => {
         if (!clientPhone) {
@@ -879,11 +944,28 @@ export default function CotizadorPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pb-24 md:pb-6">
-                                {filteredProducts.map((product) => (
-                                    <ProductCard key={product.id} product={product} onAdd={addToCart} />
-                                ))}
-                            </div>
+                            <>
+                                {/* NUEVO: Mapear displayedProducts en lugar de filteredProducts */}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pb-6">
+                                    {displayedProducts.map((product) => (
+                                        <ProductCard key={product.id} product={product} onAdd={addToCart} />
+                                    ))}
+                                </div>
+
+                                {/* NUEVO: Botón Cargar Más */}
+                                {visibleCount < filteredProducts.length && (
+                                    <div className="flex justify-center pb-24 md:pb-12">
+                                        <Button
+                                            onClick={handleLoadMore}
+                                            variant="outline"
+                                            className="min-w-[200px] rounded-full border-blue-200 text-blue-600 bg-white hover:bg-blue-50 font-bold shadow-sm h-12"
+                                        >
+                                            <ChevronDown className="mr-2 h-4 w-4" />
+                                            Cargar más productos
+                                        </Button>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
