@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "predeploy": "rm -rf out && npm run build && cp app/api/refacciones.php out/api/",
+    "deploy": "npm run predeploy && rsync -avz ./out/ hostgator:~/public_html/"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

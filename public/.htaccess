@@ -1,5 +1,3 @@
-# Archivo public/.htaccess
-
 Options -MultiViews
 RewriteEngine On
 
@@ -16,7 +14,36 @@ RewriteRule ^ - [L]
 RewriteCond %{REQUEST_FILENAME}.html -f
 RewriteRule ^([^\.]+)$ $1.html [NC,L]
 
-# 4. Fallback para rutas dinámicas (SPA) -> Enviar todo al index si no encuentra nada
+# 4. Fallback para rutas dinámicas (SPA)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . index.html [L]
+
+# --- NUEVO: OPTIMIZACIÓN DE CACHÉ (SOLUCIÓN AL ERROR DE RENDIMIENTO) ---
+<IfModule mod_expires.c>
+  ExpiresActive On
+
+  # Imágenes: Guardarlas por 1 año (Ahorro masivo de datos)
+  ExpiresByType image/jpg "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/x-icon "access plus 1 year"
+
+  # Fuentes y otros recursos estáticos
+  ExpiresByType font/ttf "access plus 1 year"
+  ExpiresByType font/woff "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType application/vnd.ms-fontobject "access plus 1 year"
+
+  # CSS y JS: 1 año (Next.js cambia el nombre del archivo si modificas el código, así que es seguro)
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType text/javascript "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType application/x-javascript "access plus 1 year"
+
+  # HTML: Sin caché o muy corto para ver cambios rápido
+  ExpiresByType text/html "access plus 0 seconds"
+</IfModule>

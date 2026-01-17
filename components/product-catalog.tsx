@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+// 1. AGREGAMOS 'useMemo' A LOS IMPORTS
+import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
 import { Search, ShoppingCart, Phone, MapPin, Filter, Loader2, ExternalLink, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -19,7 +20,14 @@ interface Product {
     available: boolean
 }
 
-const ITEMS_PER_PAGE = 12; // Cantidad inicial de productos
+const ITEMS_PER_PAGE = 15; // Cantidad inicial de productos
+
+const normalizeText = (text: string) => {
+    return text
+        .toLowerCase()
+        .normalize("NFD") 
+        .replace(/[\u0300-\u036f]/g, "") 
+}
 
 export function ProductCatalog() {
     // Estados de datos
@@ -39,11 +47,6 @@ export function ProductCatalog() {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                /**
-                 * DETERMINACIÓN DE LA RUTA:
-                 * - En desarrollo (npm run dev) usa la ruta de Next.js que configuramos con Cheerio.
-                 * - En producción (sitio exportado) busca el archivo físico .php en tu hosting.
-                 */
                 const apiUrl = process.env.NODE_ENV === 'development'
                     ? "/api/refacciones"
                     : "api/refacciones.php";
@@ -51,7 +54,6 @@ export function ProductCatalog() {
                 const response = await fetch(apiUrl)
 
                 if (!response.ok) {
-                    // Fallback: Si el archivo PHP no responde, intenta rescatar con la ruta de la API interna
                     if (apiUrl.includes('.php')) {
                         console.warn("Fallo carga PHP, intentando API route local...");
                         const retry = await fetch("/api/refacciones");
@@ -81,14 +83,34 @@ export function ProductCatalog() {
     }, [searchQuery, selectedCategory])
 
     // 2. Obtener categorías únicas dinámicamente
-    const categories = ["Todos", ...Array.from(new Set(products.map((p) => p.category))).sort()]
+    const categories = useMemo(() => {
+        return ["Todos", ...Array.from(new Set(products.map((p) => p.category))).sort()]
+    }, [products])
 
-    // 3. Filtrado
-    const filteredProducts = products.filter((product) => {
-        const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory
-        return matchesSearch && matchesCategory
-    })
+    // 3. FILTRADO INTELIGENTE (MEJORADO CON TOKENIZACIÓN)
+    const filteredProducts = useMemo(() => {
+        // A. Pre-procesar la búsqueda: Normalizar y dividir en palabras
+        const cleanQuery = normalizeText(searchQuery)
+        const queryTerms = cleanQuery.split(" ").filter(Boolean) // ["moto", "g20"]
+
+        return products.filter((product) => {
+            // B. Filtro por Categoría
+            const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory
+            if (!matchesCategory) return false
+
+            // C. Si no hay búsqueda escrita, pasar (ahorra recursos)
+            if (queryTerms.length === 0) return true
+
+            // D. Búsqueda Inteligente (Tokens)
+            const cleanName = normalizeText(product.name)
+
+            // Verifica que TODAS las palabras escritas estén en el nombre
+            // Permite buscar "g20 moto" y encontrar "Display Moto G20"
+            const matchesSearch = queryTerms.every((term) => cleanName.includes(term))
+
+            return matchesSearch
+        })
+    }, [products, searchQuery, selectedCategory])
 
     // 4. Paginación
     const displayedProducts = filteredProducts.slice(0, visibleCount)
@@ -97,6 +119,7 @@ export function ProductCatalog() {
         setVisibleCount((prev) => prev + ITEMS_PER_PAGE)
     }
 
+    // Nota: Esta función solo actualiza contadores visuales en este ejemplo
     const addToCart = (price: number) => {
         setCartCount((prev) => prev + 1)
         setCartTotal((prev) => prev + price)
@@ -124,6 +147,7 @@ export function ProductCatalog() {
                             fill
                             className="object-contain"
                             priority
+                            sizes="(max-width: 768px) 128px, 128px"
                         />
                     </div>
                 </div>
@@ -209,13 +233,13 @@ export function ProductCatalog() {
                                 <div className="aspect-square relative mb-0 overflow-hidden bg-white border-b border-gray-50">
                                     <a href={product.url} target="_self" className="block h-full w-full p-4" title="img-product">
                                         <Image
-                                            src={product.image && product.image.startsWith('http')
-                                                ? product.image
-                                                : "https://placehold.co/400x400?text=Sin+Imagen"}
+                                            src={product.image && product.image.startsWith('http') ? product.image : "https://placehold.co/400x400?text=Sin+Imagen"}
                                             alt={product.name}
                                             fill
                                             className="object-contain p-2 transition-transform duration-300 group-hover:scale-110"
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                            // Le dice al navegador qué tamaño descargar según la pantalla
+                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                            loading="lazy"
                                         />
                                     </a>
                                 </div>
@@ -276,7 +300,7 @@ export function ProductCatalog() {
                 </div>
             </div>
 
-            {/* Widget Flotante del Carrito */}
+            {/* Widget Flotante del Carrito (Visual) */}
             {cartCount > 0 && (
                 <div className="fixed bottom-6 left-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
                     <Button className="flex h-auto flex-col items-start rounded-full border border-blue-200 bg-white px-6 py-2 text-[#3b82f6] shadow-xl hover:bg-blue-50 transition-transform hover:scale-105">
