@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export', // <--- Esto genera HTML estático en la carpeta 'out'  
+  // output: 'export', // <--- Esto genera HTML estático en la carpeta 'out'  
   images: {
     unoptimized: true, // <--- Desactiva la optimización de imágenes para exportación estática
     remotePatterns: [

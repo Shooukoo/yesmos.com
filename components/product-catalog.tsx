@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+// 1. AGREGAMOS 'useMemo' A LOS IMPORTS
+import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
 import { Search, ShoppingCart, Phone, MapPin, Filter, Loader2, ExternalLink, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -19,7 +20,14 @@ interface Product {
     available: boolean
 }
 
-const ITEMS_PER_PAGE = 12; // Cantidad inicial de productos
+const ITEMS_PER_PAGE = 15; // Cantidad inicial de productos
+
+const normalizeText = (text: string) => {
+    return text
+        .toLowerCase()
+        .normalize("NFD") 
+        .replace(/[\u0300-\u036f]/g, "") 
+}
 
 export function ProductCatalog() {
     // Estados de datos
@@ -35,11 +43,10 @@ export function ProductCatalog() {
     // Estado para paginación
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE)
 
-    // 1. Carga de datos (Lógica Híbrida Local/HostGator)
+    // 1. Carga de datos (Lógica Híbrida Local/Producción)
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                // En desarrollo usa la API de Next.js, en producción busca el archivo PHP
                 const apiUrl = process.env.NODE_ENV === 'development'
                     ? "/api/refacciones"
                     : "api/refacciones.php";
@@ -48,7 +55,7 @@ export function ProductCatalog() {
 
                 if (!response.ok) {
                     if (apiUrl.includes('.php')) {
-                        console.warn("Fallo carga PHP, intentando API route...");
+                        console.warn("Fallo carga PHP, intentando API route local...");
                         const retry = await fetch("/api/refacciones");
                         if (retry.ok) {
                             const data = await retry.json();
@@ -75,15 +82,35 @@ export function ProductCatalog() {
         setVisibleCount(ITEMS_PER_PAGE)
     }, [searchQuery, selectedCategory])
 
-    // 2. Obtener categorías únicas del scraping
-    const categories = ["Todos", ...Array.from(new Set(products.map((p) => p.category))).sort()]
+    // 2. Obtener categorías únicas dinámicamente
+    const categories = useMemo(() => {
+        return ["Todos", ...Array.from(new Set(products.map((p) => p.category))).sort()]
+    }, [products])
 
-    // 3. Filtrado
-    const filteredProducts = products.filter((product) => {
-        const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory
-        return matchesSearch && matchesCategory
-    })
+    // 3. FILTRADO INTELIGENTE (MEJORADO CON TOKENIZACIÓN)
+    const filteredProducts = useMemo(() => {
+        // A. Pre-procesar la búsqueda: Normalizar y dividir en palabras
+        const cleanQuery = normalizeText(searchQuery)
+        const queryTerms = cleanQuery.split(" ").filter(Boolean) // ["moto", "g20"]
+
+        return products.filter((product) => {
+            // B. Filtro por Categoría
+            const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory
+            if (!matchesCategory) return false
+
+            // C. Si no hay búsqueda escrita, pasar (ahorra recursos)
+            if (queryTerms.length === 0) return true
+
+            // D. Búsqueda Inteligente (Tokens)
+            const cleanName = normalizeText(product.name)
+
+            // Verifica que TODAS las palabras escritas estén en el nombre
+            // Permite buscar "g20 moto" y encontrar "Display Moto G20"
+            const matchesSearch = queryTerms.every((term) => cleanName.includes(term))
+
+            return matchesSearch
+        })
+    }, [products, searchQuery, selectedCategory])
 
     // 4. Paginación
     const displayedProducts = filteredProducts.slice(0, visibleCount)
@@ -92,6 +119,7 @@ export function ProductCatalog() {
         setVisibleCount((prev) => prev + ITEMS_PER_PAGE)
     }
 
+    // Nota: Esta función solo actualiza contadores visuales en este ejemplo
     const addToCart = (price: number) => {
         setCartCount((prev) => prev + 1)
         setCartTotal((prev) => prev + price)
@@ -111,7 +139,6 @@ export function ProductCatalog() {
 
             {/* Cabecera de Tienda */}
             <div className="mb-12 flex flex-col items-center gap-8 md:flex-row md:items-start md:justify-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                {/* Logo de la tienda (ACTUALIZADO) */}
                 <div className="flex h-32 w-32 flex-shrink-0 items-center justify-center rounded-lg border bg-blue-50 p-3 shadow-sm overflow-hidden">
                     <div className="relative h-full w-full">
                         <Image
@@ -120,6 +147,7 @@ export function ProductCatalog() {
                             fill
                             className="object-contain"
                             priority
+                            sizes="(max-width: 768px) 128px, 128px"
                         />
                     </div>
                 </div>
@@ -205,11 +233,13 @@ export function ProductCatalog() {
                                 <div className="aspect-square relative mb-0 overflow-hidden bg-white border-b border-gray-50">
                                     <a href={product.url} target="_self" className="block h-full w-full p-4" title="img-product">
                                         <Image
-                                            src={product.image && product.image.startsWith('http') ? product.image : "/placeholder.svg"}
+                                            src={product.image && product.image.startsWith('http') ? product.image : "https://placehold.co/400x400?text=Sin+Imagen"}
                                             alt={product.name}
                                             fill
                                             className="object-contain p-2 transition-transform duration-300 group-hover:scale-110"
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                            // Le dice al navegador qué tamaño descargar según la pantalla
+                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                            loading="lazy"
                                         />
                                     </a>
                                 </div>
@@ -217,9 +247,9 @@ export function ProductCatalog() {
                                 {/* Contenido */}
                                 <div className="flex flex-1 flex-col p-4">
                                     <div className="mb-3">
-                                        <span className="inline-block text-[10px] font-bold text-[#3b82f6] bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
+                                        <Badge variant="secondary" className="mb-2 text-[#3b82f6] bg-blue-50 uppercase text-[10px] font-bold">
                                             {product.category}
-                                        </span>
+                                        </Badge>
                                         <h3 className="text-sm font-medium text-gray-900 line-clamp-2 min-h-[40px] leading-snug" title={product.name}>
                                             {product.name}
                                         </h3>
@@ -231,7 +261,6 @@ export function ProductCatalog() {
                                         </p>
 
                                         <div className="grid grid-cols-1 gap-2">
-                                            {/* Botón Ver (Enlace Real en la misma pestaña) */}
                                             <Button
                                                 asChild
                                                 variant="outline"
@@ -271,7 +300,7 @@ export function ProductCatalog() {
                 </div>
             </div>
 
-            {/* Widget Flotante del Carrito */}
+            {/* Widget Flotante del Carrito (Visual) */}
             {cartCount > 0 && (
                 <div className="fixed bottom-6 left-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
                     <Button className="flex h-auto flex-col items-start rounded-full border border-blue-200 bg-white px-6 py-2 text-[#3b82f6] shadow-xl hover:bg-blue-50 transition-transform hover:scale-105">
