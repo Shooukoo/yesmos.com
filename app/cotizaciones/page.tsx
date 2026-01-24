@@ -102,10 +102,10 @@ function calculateSellingPrice(precioOriginal: number, categoria: string, nombre
 
     // B. EXCEPCIONES: CATEGORÍAS CON PRECIOS FIJOS
     const categoriasFijas: Record<string, number> = {
-        "BANDEJAS SIM": 350,
-        LENTES: 350,
-        "CENTRO DE CARGA": 350,
-        "FLEX DE CARGA": 550,
+        "BANDEJAS SIM": 200,
+        "LENTES": 250,
+        "CENTRO DE CARGA": 250,
+        "FLEX DE CARGA": 450,
     }
 
     if (categoriasFijas[cat]) {
@@ -125,9 +125,19 @@ function calculateSellingPrice(precioOriginal: number, categoria: string, nombre
         return { sellingPrice: precioFinal }
     }
 
-    // D. REGLA GENERAL: x2 y redondear al siguiente múltiplo de 50
+    // D. REGLA GENERAL: x2 y redondear al siguiente múltiplo de 50 o 100 según el residuo
     const precioDoble = precioOriginal * 2
-    const precioFinal = Math.ceil(precioDoble / 50) * 50
+    const residuo = precioDoble % 100
+
+    let precioFinal: number
+
+    // Si el residuo es 50 o menos, redondeamos a 50
+    if (residuo <= 50) {
+        precioFinal = precioDoble - residuo + 50
+    } else {
+        // Si el residuo es mayor a 50, redondeamos a la siguiente centena
+        precioFinal = precioDoble - residuo + 100
+    }
 
     return { sellingPrice: precioFinal }
 }
