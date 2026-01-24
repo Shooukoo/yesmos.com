@@ -50,6 +50,7 @@ export function Hero() {
                 height={500}
                 className="relative z-10 object-contain rounded-xl shadow-lg"
                 priority
+                sizes="(max-width: 768px) 100vw, 500px" // Ayuda al navegador a elegir el tamaño correcto
               />
             </div>
           </div>

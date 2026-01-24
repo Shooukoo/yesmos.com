@@ -4,13 +4,11 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Suspense } from "react"
 import { Toaster } from "@/components/ui/sonner"
-import { Inter as V0_Font_Inter, Geist_Mono as V0_Font_Geist_Mono, Source_Serif_4 as V0_Font_Source_Serif_4 } from 'next/font/google'
+import { Inter as V0_Font_Inter } from 'next/font/google'
 import Script from 'next/script' // <--- Importamos Script para mejor manejo (opcional, pero nativo es mejor aqui)
 
 // Initialize fonts
 const _inter = V0_Font_Inter({ subsets: ['latin'], weight: ["100","200","300","400","500","600","700","800","900"], variable: '--font-sans' })
-const _geistMono = V0_Font_Geist_Mono({ subsets: ['latin'], weight: ["100","200","300","400","500","600","700","800","900"], variable: '--font-mono' })
-const _sourceSerif_4 = V0_Font_Source_Serif_4({ subsets: ['latin'], weight: ["200","300","400","500","600","700","800","900"], variable: '--font-serif' })
 
 export const metadata: Metadata = {
   title: {

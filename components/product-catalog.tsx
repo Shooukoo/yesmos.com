@@ -147,7 +147,7 @@ export function ProductCatalog() {
                             fill
                             className="object-contain"
                             priority
-                            sizes="(max-width: 768px) 128px, 128px"
+                            sizes="104px"
                         />
                     </div>
                 </div>
@@ -238,7 +238,7 @@ export function ProductCatalog() {
                                             fill
                                             className="object-contain p-2 transition-transform duration-300 group-hover:scale-110"
                                             // Le dice al navegador qué tamaño descargar según la pantalla
-                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                                             loading="lazy"
                                         />
                                     </a>

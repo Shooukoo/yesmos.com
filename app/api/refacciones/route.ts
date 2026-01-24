@@ -16,9 +16,10 @@ export async function GET() {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             },
-            // Importante: forzamos cacheo o no-store según el entorno, 
-            // pero force-static arriba manda sobre esto en el build.
-            next: { revalidate: 3600 }
+            // Importante: La respuesta es > 2MB, por lo que fallará si intentamos cachearla (Data Cache).
+            // Usamos "no-store" para saltarnos el cache de fetch, pero mantenemos el 'force-static'
+            // de la ruta para que se genere una vez al build (o se revalide según configuración de página).
+            cache: 'no-store'
         });
 
         if (!response.ok) throw new Error("Fallo al conectar con el proveedor");
