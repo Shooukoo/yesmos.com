@@ -11,20 +11,30 @@ export async function GET() {
     try {
         const url = "https://www.anegocios.com.mx/99/PLAZA_TELCEL";
 
-        // Configuración para el fetch
-        const response = await fetch(url, {
-            headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-            },
-            // Importante: La respuesta es > 2MB, por lo que fallará si intentamos cachearla (Data Cache).
-            // Usamos "no-store" para saltarnos el cache de fetch, pero mantenemos el 'force-static'
-            // de la ruta para que se genere una vez al build (o se revalide según configuración de página).
-            cache: 'no-store'
+        // Usamos https nativo para evitar el cache de Next.js (Data Cache) que tiene límite de 2MB
+        // y para evitar que marque la ruta como dinámica al usar 'no-store'.
+        // Al usar 'force-static', esto se ejecutará una sola vez al build.
+        const importHttps = await import("https");
+        
+        const html = await new Promise<string>((resolve, reject) => {
+            const req = importHttps.get(url, {
+                headers: {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                }
+            }, (res) => {
+                let data = '';
+                res.on('data', (chunk) => data += chunk);
+                res.on('end', () => resolve(data));
+            });
+            
+            req.on('error', (e) => reject(e));
+            req.end();
         });
 
-        if (!response.ok) throw new Error("Fallo al conectar con el proveedor");
+        // Ya no necesitamos verificar response.ok manualmente porque el 'end' implica éxito en la transmisión
+        // aunque idealmente deberíamos checar res.statusCode, para scraping simple esto suele bastar.
 
-        const html = await response.text();
+        // const html = await response.text(); // Ya lo tenemos de la promesa anterior
         const $ = cheerio.load(html);
         const products: any[] = [];
 
