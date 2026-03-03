@@ -12,12 +12,14 @@ import { Badge } from "@/components/ui/badge"
 
 interface Product {
     id: number
+    barcode?: string
     name: string
     price: number
     category: string
     image: string
     url: string
     available: boolean
+    stock?: number
 }
 
 const ITEMS_PER_PAGE = 15; // Cantidad inicial de productos
@@ -25,8 +27,8 @@ const ITEMS_PER_PAGE = 15; // Cantidad inicial de productos
 const normalizeText = (text: string) => {
     return text
         .toLowerCase()
-        .normalize("NFD") 
-        .replace(/[\u0300-\u036f]/g, "") 
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
 }
 
 export function ProductCatalog() {
@@ -228,16 +230,33 @@ export function ProductCatalog() {
                         {displayedProducts.map((product) => (
                             <div
                                 key={product.id}
-                                className="group relative flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white transition-all hover:shadow-lg hover:border-[#3b82f6]/30 animate-in fade-in zoom-in-95 duration-300"
+                                className={`group relative flex flex-col overflow-hidden rounded-lg border bg-white transition-all animate-in fade-in zoom-in-95 duration-300 ${product.available
+                                        ? 'border-gray-200 hover:shadow-lg hover:border-[#3b82f6]/30'
+                                        : 'border-gray-100 opacity-60 grayscale'
+                                    }`}
                             >
+                                {/* Badge de stock */}
+                                <div className="absolute top-2 right-2 z-10">
+                                    {product.available ? (
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 border border-green-200 px-2 py-0.5 text-[10px] font-bold text-green-600">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                                            En stock{product.stock !== undefined ? ` (${product.stock})` : ''}
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-[10px] font-bold text-red-500">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-red-400"></span>
+                                            Sin stock
+                                        </span>
+                                    )}
+                                </div>
+
                                 <div className="aspect-square relative mb-0 overflow-hidden bg-white border-b border-gray-50">
                                     <a href={product.url} target="_self" className="block h-full w-full p-4" title="img-product">
                                         <Image
                                             src={product.image && product.image.startsWith('http') ? product.image : "https://placehold.co/400x400?text=Sin+Imagen"}
                                             alt={product.name}
                                             fill
-                                            className="object-contain p-2 transition-transform duration-300 group-hover:scale-110"
-                                            // Le dice al navegador qué tamaño descargar según la pantalla
+                                            className="object-contain p-2 transition-transform duration-300 group-hover:scale-105"
                                             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                                             loading="lazy"
                                         />
@@ -250,26 +269,28 @@ export function ProductCatalog() {
                                         <Badge variant="secondary" className="mb-2 text-[#3b82f6] bg-blue-50 uppercase text-[10px] font-bold">
                                             {product.category}
                                         </Badge>
-                                        <h3 className="text-sm font-medium text-gray-900 line-clamp-2 min-h-[40px] leading-snug" title={product.name}>
+                                        <h3 className={`text-sm font-medium line-clamp-2 min-h-[40px] leading-snug ${product.available ? 'text-gray-900' : 'text-gray-400'}`} title={product.name}>
                                             {product.name}
                                         </h3>
                                     </div>
 
                                     <div className="mt-auto pt-3 border-t border-gray-100">
-                                        <p className="mb-3 text-xl font-black text-gray-900 tracking-tight">
+                                        <p className={`mb-3 text-xl font-black tracking-tight ${product.available ? 'text-gray-900' : 'text-gray-400'}`}>
                                             ${product.price.toFixed(2)}
                                         </p>
 
                                         <div className="grid grid-cols-1 gap-2">
-                                            <Button
-                                                asChild
-                                                variant="outline"
-                                                className="w-full border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 h-9 text-sm"
-                                            >
-                                                <a href={product.url} target="_self">
-                                                    Ver Detalles <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
-                                                </a>
-                                            </Button>
+                                            {product.available ? (
+                                                <Button asChild variant="outline" className="w-full border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 h-9 text-sm">
+                                                    <a href={product.url} target="_self">
+                                                        Ver Detalles <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
+                                                    </a>
+                                                </Button>
+                                            ) : (
+                                                <Button variant="outline" disabled className="w-full border-gray-100 text-gray-400 h-9 text-sm cursor-not-allowed">
+                                                    Sin existencias
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

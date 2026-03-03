@@ -1,94 +1,239 @@
 <?php
-// refacciones.php
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *'); // Permite que tu sitio lea los datos
+// refacciones.php — Scraping autenticado de anegocios.com
+// Usa cURL para login, sesión y parseo de inventario
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
 
-// 1. Obtener el HTML de la página
-$url = "https://www.anegocios.com.mx/99/PLAZA_TELCEL";
-$options = [
-    "http" => [
-        "header" => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    ]
-];
-$context = stream_context_create($options);
-$html = file_get_contents($url, false, $context);
+// ── 1. Inicializar cURL con cookie jar en memoria ─────────────────────────
+$cookieFile = tempnam(sys_get_temp_dir(), 'ane_cookie_');
 
-if ($html === FALSE) {
-    echo json_encode(["error" => "No se pudo cargar la página externa"]);
+function makeRequest($url, $method = 'GET', $postData = null, $cookieFile = null, $referer = null) {
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,   // Manejamos redirects manualmente
+        CURLOPT_ENCODING       => '',      // Acepta gzip automáticamente
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        CURLOPT_HTTPHEADER     => [
+            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language: es-MX,es;q=0.9',
+        ],
+        CURLOPT_COOKIEFILE     => $cookieFile,
+        CURLOPT_COOKIEJAR      => $cookieFile,
+        CURLOPT_HEADER         => true,    // Incluir headers en respuesta para leer Location
+    ]);
+
+    if ($referer) {
+        curl_setopt($ch, CURLOPT_REFERER, $referer);
+    }
+
+    if ($method === 'POST' && $postData !== null) {
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+    }
+
+    $response  = curl_exec($ch);
+    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    curl_close($ch);
+
+    $headers = substr($response, 0, $headerSize);
+    $body    = substr($response, $headerSize);
+
+    // Extraer Location si hay redirect
+    $location = null;
+    if (preg_match('/^Location:\s*(.+)$/im', $headers, $m)) {
+        $location = trim($m[1]);
+    }
+
+    return ['code' => $httpCode, 'body' => $body, 'location' => $location];
+}
+
+// Sigue redirecciones hasta conseguir un 200
+function followRedirects($url, $cookieFile, $referer = null, $depth = 0) {
+    if ($depth > 5) return ['code' => 0, 'body' => '', 'location' => null];
+    $r = makeRequest($url, 'GET', null, $cookieFile, $referer);
+    if ($r['code'] === 301 || $r['code'] === 302) {
+        $next = $r['location'];
+        if ($next && !str_starts_with($next, 'http')) {
+            $base = parse_url($url);
+            $next = $base['scheme'] . '://' . $base['host'] . $next;
+        }
+        return followRedirects($next, $cookieFile, $url, $depth + 1);
+    }
+    return $r;
+}
+
+// ── 2. GET página de login → CSRF token ───────────────────────────────────
+$r1 = followRedirects('https://anegocios.com/', $cookieFile);
+if ($r1['code'] !== 200) {
+    echo json_encode(['error' => 'No se pudo cargar la página de login', 'code' => $r1['code']]);
+    unlink($cookieFile);
     exit;
 }
 
-// 2. Parsear el HTML (Usando DOMDocument)
-$dom = new DOMDocument;
-libxml_use_internal_errors(true); // Ocultar errores de HTML mal formado
-$dom->loadHTML($html);
+preg_match('/name="_csrf_token"\s+value="([^"]+)"/', $r1['body'], $csrfMatch);
+$csrf = $csrfMatch[1] ?? '';
+if (!$csrf) {
+    echo json_encode(['error' => 'CSRF token no encontrado']);
+    unlink($cookieFile);
+    exit;
+}
+
+// ── 3. POST login ──────────────────────────────────────────────────────────
+$loginData = http_build_query([
+    '_username'     => 'SantiN1mx',
+    '_password'     => 'Anegocios',
+    '_csrf_token'   => $csrf,
+    '_target_path'  => 'Muro',
+    '_failure_path' => 'Home',
+]);
+
+$r2 = makeRequest('https://anegocios.com/login_check', 'POST', $loginData, $cookieFile, 'https://anegocios.com/');
+if ($r2['code'] !== 302 || strpos($r2['location'], 'Muro') === false) {
+    echo json_encode(['error' => 'Login fallido', 'code' => $r2['code'], 'location' => $r2['location']]);
+    unlink($cookieFile);
+    exit;
+}
+
+// ── 4. GET Muro → consolidar sesión ────────────────────────────────────────
+followRedirects('https://anegocios.com/sis/Muro-del-Usuario', $cookieFile, 'https://anegocios.com/login_check');
+
+// ── 5. GET Lista Productos ─────────────────────────────────────────────────
+$r4 = followRedirects('https://anegocios.com/sis/inventario/Lista_Productos', $cookieFile, 'https://anegocios.com/sis/Muro-del-Usuario');
+
+if ($r4['code'] !== 200) {
+    echo json_encode(['error' => 'No se pudo cargar inventario', 'code' => $r4['code']]);
+    unlink($cookieFile);
+    exit;
+}
+
+$html = $r4['body'];
+
+// Verificar autenticación
+if (strpos($html, '_csrf_token') !== false && strpos($html, 'DataTable') === false) {
+    echo json_encode(['error' => 'Sesión inválida — redirigido a login']);
+    unlink($cookieFile);
+    exit;
+}
+
+// ── 6. Parsear tabla con DOMDocument ──────────────────────────────────────
+$dom = new DOMDocument();
+libxml_use_internal_errors(true);
+$dom->loadHTML('<?xml encoding="UTF-8">' . $html);
 libxml_clear_errors();
-
 $xpath = new DOMXPath($dom);
+
+// Buscar las filas del tbody de la tabla de inventario
+$rows = $xpath->query('//table[contains(@id,"DataTables_Table_1") or contains(@class,"MyDataTable")]//tbody/tr');
+if (!$rows || $rows->length === 0) {
+    // Fallback: cualquier tbody/tr
+    $rows = $xpath->query('//tbody/tr');
+}
+
 $products = [];
+$index = 0;
 
-// Buscar todos los divs con clase "fly"
-$nodes = $xpath->query("//*[contains(concat(' ', normalize-space(@class), ' '), ' fly ')]");
+foreach ($rows as $row) {
+    $cells = $xpath->query('.//td', $row);
+    if ($cells->length < 9) continue;
 
-foreach ($nodes as $index => $node) {
-    // Nombre (está en una etiqueta <p>)
-    $pNodes = $xpath->query(".//p", $node);
-    $name = $pNodes->length > 0 ? trim($pNodes->item(0)->nodeValue) : "Sin nombre";
+    $barcode = trim($cells->item(2)->textContent);
+    $name    = trim($cells->item(3)->textContent);
+    $price   = floatval(preg_replace('/[^0-9.]/', '', $cells->item(6)->textContent));
+    $stock   = intval(trim($cells->item(8)->textContent));
 
-    // Precio (está en una etiqueta <span>)
-    $spanNodes = $xpath->query(".//span", $node);
-    $priceText = $spanNodes->length > 0 ? trim($spanNodes->item(0)->nodeValue) : "0";
-    $price = floatval(preg_replace('/[^0-9.]/', '', $priceText));
+    if (empty($name) || $name === '-') continue;
 
-    // Imagen (está en .imgProd img)
-    $imgNodes = $xpath->query(".//div[contains(@class, 'imgProd')]//img", $node);
-    $image = "";
-    if ($imgNodes->length > 0) {
-        $image = $imgNodes->item(0)->getAttribute('src');
-    }
-
-    // URL (data-url en .linkDetalleProd)
-    $linkNodes = $xpath->query(".//div[contains(@class, 'linkDetalleProd')]", $node);
-    $url = "#";
-    if ($linkNodes->length > 0) {
-        $relativeUrl = $linkNodes->item(0)->getAttribute('data-url');
-        $url = "https://www.anegocios.com.mx" . $relativeUrl;
-    }
-
-    // Categorización (Lógica portada de JS a PHP)
-    $category = "Otros";
+    // Categorización
     $n = strtoupper($name);
+    if     (strpos($n,'DIS')!==false || strpos($n,'LCD')!==false || strpos($n,'PANTALLA')!==false) $cat = 'Pantallas';
+    elseif (strpos($n,'BAT')!==false || strpos($n,'PILA')!==false)                                 $cat = 'Baterías';
+    elseif (strpos($n,'TAPA')!==false || strpos($n,'TRASERA')!==false)                             $cat = 'Tapas';
+    elseif (strpos($n,'FLEX')!==false || strpos($n,'CENTRO')!==false || strpos($n,'CARGA')!==false) $cat = 'Flexores';
+    elseif (strpos($n,'TOUCH')!==false)                                                             $cat = 'Touch';
+    elseif (strpos($n,'LENTE')!==false || strpos($n,'CAMARA')!==false)                             $cat = 'Cámaras';
+    elseif (strpos($n,'SIM')!==false || strpos($n,'BANDEJA')!==false)                              $cat = 'Bandejas SIM';
+    elseif (strpos($n,'ACCESORIO')!==false || strpos($n,'CABLE')!==false || strpos($n,'FUNDA')!==false) $cat = 'Accesorios';
+    else                                                                                            $cat = 'Otros';
 
-    if (strpos($n, "DIS") !== false || strpos($n, "LCD") !== false || strpos($n, "PANTALLA") !== false) {
-        $category = "Pantallas";
-    } elseif (strpos($n, "BAT") !== false || strpos($n, "PILA") !== false) {
-        $category = "Baterías";
-    } elseif (strpos($n, "TAPA") !== false || strpos($n, "TRASERA") !== false) {
-        $category = "Tapas";
-    } elseif (strpos($n, "FLEX") !== false || strpos($n, "CENTRO") !== false || strpos($n, "CARGA") !== false) {
-        $category = "Flexores";
-    } elseif (strpos($n, "TOUCH") !== false) {
-        $category = "Touch";
-    } elseif (strpos($n, "LENTE") !== false || strpos($n, "CAMARA") !== false) {
-        $category = "Cámaras";
-    } elseif (strpos($n, "SIM") !== false || strpos($n, "BANDEJA") !== false) {
-        $category = "Bandejas SIM";
-    } elseif (strpos($n, "ACCESORIO") !== false || strpos($n, "CABLE") !== false || strpos($n, "FUNDA") !== false) {
-        $category = "Accesorios";
-    }
+    $products[] = [
+        'id'        => ++$index,
+        'barcode'   => $barcode,
+        'name'      => $name,
+        'price'     => $price,
+        'category'  => $cat,
+        'image'     => '',    // se rellena abajo
+        'url'       => '#',
+        'available' => $stock > 0,
+        'stock'     => $stock,
+    ];
+}
 
-    if ($name !== "Sin nombre" && $price > 0) {
-        $products[] = [
-            "id" => $index + 1,
-            "name" => $name,
-            "price" => $price,
-            "category" => $category,
-            "image" => $image,
-            "url" => $url,
-            "available" => true
-        ];
+// ── 7. Imágenes del catálogo público ─────────────────────────────────────
+$imgCh = curl_init();
+curl_setopt_array($imgCh, [
+    CURLOPT_URL            => 'https://anegocios.com/99/YESMOS_REFACCIONES',
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_ENCODING       => '',
+    CURLOPT_TIMEOUT        => 20,
+    CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    CURLOPT_SSL_VERIFYPEER => true,
+]);
+$imgHtml = curl_exec($imgCh);
+curl_close($imgCh);
+
+$imageMap = [];
+if ($imgHtml) {
+    $imgDom = new DOMDocument();
+    libxml_use_internal_errors(true);
+    $imgDom->loadHTML('<?xml encoding="UTF-8">' . $imgHtml);
+    libxml_clear_errors();
+    $imgXpath = new DOMXPath($imgDom);
+
+    // Elementos .fly en el catálogo público
+    $flyNodes = $imgXpath->query("//*[contains(concat(' ', normalize-space(@class), ' '), ' fly ')]");
+    foreach ($flyNodes as $fly) {
+        $pNodes = $imgXpath->query('.//p', $fly);
+        $flyName = $pNodes->length > 0 ? strtoupper(trim($pNodes->item(0)->textContent)) : '';
+
+        $imgNodes = $imgXpath->query(".//*[contains(@class,'imgProd')]//img", $fly);
+        $src = '';
+        if ($imgNodes->length > 0) {
+            $src = $imgNodes->item(0)->getAttribute('src');
+            if ($src && strpos($src, 'http') !== 0) {
+                $src = 'https://anegocios.com' . (strpos($src, '/') === 0 ? '' : '/') . $src;
+            }
+        }
+        if ($flyName && $src) {
+            $imageMap[$flyName] = $src;
+        }
     }
 }
 
-echo json_encode($products);
+// Cross-reference imágenes por nombre
+foreach ($products as &$p) {
+    $nameUp = strtoupper($p['name']);
+    if (isset($imageMap[$nameUp])) {
+        $p['image'] = $imageMap[$nameUp];
+    } else {
+        // Match parcial
+        foreach ($imageMap as $key => $url) {
+            if (strpos($key, $nameUp) !== false || (strlen($nameUp) > 10 && strpos($key, substr($nameUp, 0, 10)) === 0)) {
+                $p['image'] = $url;
+                break;
+            }
+        }
+    }
+}
+unset($p);
+
+// ── 8. Limpiar y responder ────────────────────────────────────────────────
+unlink($cookieFile);
+echo json_encode($products, JSON_UNESCAPED_UNICODE);
 ?>
