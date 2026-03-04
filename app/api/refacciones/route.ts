@@ -199,13 +199,11 @@ export async function GET() {
                     src = `https://anegocios.com${src.startsWith("/") ? "" : "/"}${src}`;
                 }
 
-                // URL del producto
+                // URL del producto — usar el valor RAW sin decodificar
+                // (anegocios.com usa URLs doble-encoded: %2520 en lugar de %20)
                 let href = "";
                 if (rawUrl) {
-                    try { href = decodeURIComponent(rawUrl); } catch { href = rawUrl; }
-                    if (!href.startsWith("http")) {
-                        href = `https://anegocios.com${href.startsWith("/") ? "" : "/"}${href}`;
-                    }
+                    href = rawUrl.startsWith("http") ? rawUrl : `https://anegocios.com${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
                 }
 
                 if (catName && (src || href)) {
@@ -218,7 +216,7 @@ export async function GET() {
             products.forEach(p => {
                 const up = p.name.toUpperCase();
 
-                // Búsqueda exacta
+                // 1. Match exacto en nombre → asignar imagen Y url
                 if (catalogMap.has(up)) {
                     const entry = catalogMap.get(up)!;
                     if (entry.src) p.image = entry.src;
@@ -226,11 +224,11 @@ export async function GET() {
                     return;
                 }
 
-                // Búsqueda parcial
+                // 2. Match parcial → SOLO imagen (no url para evitar 404 con el producto incorrecto)
                 for (const [key, entry] of catalogMap) {
                     if (key.includes(up) || (up.length > 10 && key.startsWith(up.substring(0, 10)))) {
                         if (entry.src) p.image = entry.src;
-                        if (entry.url) p.url = entry.url;
+                        // url queda '#' — es mejor que una URL que da 404
                         return;
                     }
                 }

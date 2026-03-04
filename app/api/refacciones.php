@@ -217,15 +217,14 @@ if ($imgHtml) {
             }
         }
 
-        // URL del producto (atributo data-url del elemento actual)
+        // URL del producto — usar el valor RAW sin decodificar
+        // (anegocios.com usa URLs doble-encoded: %2520 en lugar de %20)
         $href = '';
         $rawUrl = $prodEl->getAttribute('data-url');
         if ($rawUrl) {
-            // Puede venir doble-encoded (%2520 => %20 => espacio)
-            $decoded = html_entity_decode(urldecode($rawUrl));
-            $href = (strpos($decoded, 'http') === 0)
-                ? $decoded
-                : 'https://anegocios.com' . (strpos($decoded, '/') === 0 ? '' : '/') . $decoded;
+            $href = (strpos($rawUrl, 'http') === 0)
+                ? $rawUrl
+                : 'https://anegocios.com' . (strpos($rawUrl, '/') === 0 ? '' : '/') . $rawUrl;
         }
 
         if (!empty($flyName) && ($src || $href)) {
@@ -238,15 +237,16 @@ if ($imgHtml) {
 foreach ($products as &$p) {
     $nameUp = strtoupper($p['name']);
     if (isset($catalogMap[$nameUp])) {
+        // Match exacto: asignar imagen Y url
         $entry = $catalogMap[$nameUp];
         if ($entry['src']) $p['image'] = $entry['src'];
         if ($entry['url']) $p['url']   = $entry['url'];
     } else {
-        // Match parcial
+        // Match parcial: SOLO imagen (no url para evitar 404 con producto incorrecto)
         foreach ($catalogMap as $key => $entry) {
             if (strpos($key, $nameUp) !== false || (strlen($nameUp) > 10 && strpos($key, substr($nameUp, 0, 10)) === 0)) {
                 if ($entry['src']) $p['image'] = $entry['src'];
-                if ($entry['url']) $p['url']   = $entry['url'];
+                // url queda '#' — mejor que un 404
                 break;
             }
         }
