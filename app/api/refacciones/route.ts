@@ -3,7 +3,10 @@ import * as cheerio from "cheerio";
 import https from "https";
 import zlib from "zlib";
 
-export const dynamic = 'force-dynamic';
+// force-static: Next.js ejecuta esta ruta UNA VEZ durante el build (output: export)
+// y genera un JSON estático. En producción, el PHP (refacciones.php) da datos frescos.
+// En dev (npm run dev), la ruta se ejecuta en vivo en cada petición.
+export const dynamic = 'force-static';
 
 // ─── HTTP helper (native https, maneja gzip/cookie) ────────────────────────
 function httpGet(url: string, cookieJar: Map<string, string>): Promise<string> {
