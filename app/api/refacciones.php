@@ -188,7 +188,7 @@ curl_setopt_array($imgCh, [
 $imgHtml = curl_exec($imgCh);
 curl_close($imgCh);
 
-$imageMap = [];
+$catalogMap = []; // ['NAME' => ['src' => '...', 'url' => '...']]
 if ($imgHtml) {
     $imgDom = new DOMDocument();
     libxml_use_internal_errors(true);
@@ -196,13 +196,19 @@ if ($imgHtml) {
     libxml_clear_errors();
     $imgXpath = new DOMXPath($imgDom);
 
-    // Elementos .fly en el catálogo público
-    $flyNodes = $imgXpath->query("//*[contains(concat(' ', normalize-space(@class), ' '), ' fly ')]");
-    foreach ($flyNodes as $fly) {
-        $pNodes = $imgXpath->query('.//p', $fly);
-        $flyName = $pNodes->length > 0 ? strtoupper(trim($pNodes->item(0)->textContent)) : '';
+    // Iterar elementos con data-url (los <prod> del catálogo)
+    $prodNodes = $imgXpath->query('//*[@data-url]');
+    foreach ($prodNodes as $prodEl) {
+        // Nombre del producto
+        $pNodes = $imgXpath->query('.//p', $prodEl);
+        $flyName = '';
+        foreach ($pNodes as $pNode) {
+            $text = trim($pNode->textContent);
+            if (!empty($text)) { $flyName = strtoupper($text); break; }
+        }
 
-        $imgNodes = $imgXpath->query(".//*[contains(@class,'imgProd')]//img", $fly);
+        // Imagen
+        $imgNodes = $imgXpath->query(".//*[contains(@class,'imgProd')]//img", $prodEl);
         $src = '';
         if ($imgNodes->length > 0) {
             $src = $imgNodes->item(0)->getAttribute('src');
@@ -210,22 +216,37 @@ if ($imgHtml) {
                 $src = 'https://anegocios.com' . (strpos($src, '/') === 0 ? '' : '/') . $src;
             }
         }
-        if ($flyName && $src) {
-            $imageMap[$flyName] = $src;
+
+        // URL del producto (atributo data-url del elemento actual)
+        $href = '';
+        $rawUrl = $prodEl->getAttribute('data-url');
+        if ($rawUrl) {
+            // Puede venir doble-encoded (%2520 => %20 => espacio)
+            $decoded = html_entity_decode(urldecode($rawUrl));
+            $href = (strpos($decoded, 'http') === 0)
+                ? $decoded
+                : 'https://anegocios.com' . (strpos($decoded, '/') === 0 ? '' : '/') . $decoded;
+        }
+
+        if (!empty($flyName) && ($src || $href)) {
+            $catalogMap[$flyName] = ['src' => $src, 'url' => $href];
         }
     }
 }
 
-// Cross-reference imágenes por nombre
+// Cross-reference imágenes y URLs por nombre
 foreach ($products as &$p) {
     $nameUp = strtoupper($p['name']);
-    if (isset($imageMap[$nameUp])) {
-        $p['image'] = $imageMap[$nameUp];
+    if (isset($catalogMap[$nameUp])) {
+        $entry = $catalogMap[$nameUp];
+        if ($entry['src']) $p['image'] = $entry['src'];
+        if ($entry['url']) $p['url']   = $entry['url'];
     } else {
         // Match parcial
-        foreach ($imageMap as $key => $url) {
+        foreach ($catalogMap as $key => $entry) {
             if (strpos($key, $nameUp) !== false || (strlen($nameUp) > 10 && strpos($key, substr($nameUp, 0, 10)) === 0)) {
-                $p['image'] = $url;
+                if ($entry['src']) $p['image'] = $entry['src'];
+                if ($entry['url']) $p['url']   = $entry['url'];
                 break;
             }
         }

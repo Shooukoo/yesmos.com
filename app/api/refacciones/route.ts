@@ -182,25 +182,56 @@ export async function GET() {
             const imgJar = new Map<string, string>();
             const imgHtml = await httpGet("https://anegocios.com/99/YESMOS_REFACCIONES", imgJar);
             const $cat = cheerio.load(imgHtml);
-            const imageMap = new Map<string, string>();
+            // Mapa: nombre → { imagen, url_pagina }
+            // Iteramos los elementos <prod data-url="..."> directamente en lugar de .fly
+            const catalogMap = new Map<string, { src: string; url: string }>();
 
-            $cat(".fly").each((_, el) => {
-                const catName = $cat(el).find("p").first().text().trim().toUpperCase();
-                let src = $cat(el).find("[class*='imgProd'] img").attr("src") ?? "";
+            $cat("[data-url]").each((_, el) => {
+                const prodEl = $cat(el);
+                const rawUrl = prodEl.attr("data-url") ?? "";
+
+                // Nombre del producto (está en el <p> dentro del .fly)
+                const catName = prodEl.find("p").first().text().trim().toUpperCase();
+
+                // Imagen
+                let src = prodEl.find("[class*='imgProd'] img").attr("src") ?? "";
                 if (src && !src.startsWith("http")) {
                     src = `https://anegocios.com${src.startsWith("/") ? "" : "/"}${src}`;
                 }
-                if (catName && src) imageMap.set(catName, src);
+
+                // URL del producto
+                let href = "";
+                if (rawUrl) {
+                    try { href = decodeURIComponent(rawUrl); } catch { href = rawUrl; }
+                    if (!href.startsWith("http")) {
+                        href = `https://anegocios.com${href.startsWith("/") ? "" : "/"}${href}`;
+                    }
+                }
+
+                if (catName && (src || href)) {
+                    catalogMap.set(catName, { src, url: href });
+                }
             });
 
-            console.log(`[Imágenes] ${imageMap.size} entradas en el mapa`);
+            console.log(`[Catálogo] ${catalogMap.size} entradas en el mapa`);
 
             products.forEach(p => {
                 const up = p.name.toUpperCase();
-                if (imageMap.has(up)) { p.image = imageMap.get(up)!; return; }
-                for (const [key, url] of imageMap) {
+
+                // Búsqueda exacta
+                if (catalogMap.has(up)) {
+                    const entry = catalogMap.get(up)!;
+                    if (entry.src) p.image = entry.src;
+                    if (entry.url) p.url = entry.url;
+                    return;
+                }
+
+                // Búsqueda parcial
+                for (const [key, entry] of catalogMap) {
                     if (key.includes(up) || (up.length > 10 && key.startsWith(up.substring(0, 10)))) {
-                        p.image = url; return;
+                        if (entry.src) p.image = entry.src;
+                        if (entry.url) p.url = entry.url;
+                        return;
                     }
                 }
             });
