@@ -256,5 +256,6 @@ unset($p);
 
 // ── 8. Limpiar y responder ────────────────────────────────────────────────
 unlink($cookieFile);
+header('Cache-Control: public, max-age=300, stale-while-revalidate=60');
 echo json_encode($products, JSON_UNESCAPED_UNICODE);
 ?>

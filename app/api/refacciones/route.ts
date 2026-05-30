@@ -237,7 +237,9 @@ export async function GET() {
             console.warn("[Imágenes] Falló:", imgErr);
         }
 
-        return NextResponse.json(products);
+        return NextResponse.json(products, {
+            headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=60" },
+        });
 
     } catch (err) {
         console.error("[Scraping] Error general:", err);

@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export', // <--- Esto genera HTML estático en la carpeta 'out'  
+  output: 'export',
+  trailingSlash: true,
   images: {
     unoptimized: true, // Requerido para 'output: export'
     remotePatterns: [

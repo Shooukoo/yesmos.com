@@ -193,7 +193,7 @@ export function TicketSidebar({
                                 <div className="flex items-center gap-2 p-2 bg-white/10 rounded-lg">
                                     <img src={companyData.logo || "/placeholder.svg"} alt="Logo" className="h-10 w-10 object-contain rounded" />
                                     <span className="text-xs text-white/70 flex-1">Logo cargado</span>
-                                    <button onClick={handleRemoveLogo} className="text-red-400 hover:text-red-300 p-1"><X className="h-4 w-4" /></button>
+                                    <button onClick={handleRemoveLogo} className="text-red-400 hover:text-red-300 p-1" aria-label="Eliminar logo" title="Eliminar logo"><X className="h-4 w-4" /></button>
                                 </div>
                             ) : (
                                 <Tabs defaultValue="upload" className="w-full">
@@ -202,7 +202,7 @@ export function TicketSidebar({
                                         <TabsTrigger value="url" className="text-[10px] text-white/70 data-[state=active]:bg-white/20 data-[state=active]:text-white"><LinkIcon className="h-3 w-3 mr-1" /> URL</TabsTrigger>
                                     </TabsList>
                                     <TabsContent value="upload" className="mt-2">
-                                        <input type="file" ref={fileInputRef} onChange={onLogoUpload} accept="image/*" className="hidden" />
+                                        <input type="file" ref={fileInputRef} onChange={onLogoUpload} accept="image/*" className="hidden" title="Subir logo" aria-label="Subir logo" />
                                         <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full h-12 border-dashed border-white/30 bg-transparent hover:bg-white/10 text-white/70"><div className="flex flex-col items-center gap-0.5"><Upload className="h-4 w-4" /><span className="text-[10px]">Click para subir (máx. 2MB)</span></div></Button>
                                     </TabsContent>
                                     <TabsContent value="url" className="mt-2 space-y-1.5">
@@ -237,7 +237,7 @@ export function TicketSidebar({
                                         <p className="text-sm font-semibold text-gray-800 leading-tight line-clamp-2">{item.name}</p>
                                         <Badge variant="outline" className="text-[9px] h-4 px-1.5 mt-1 font-normal text-gray-500 border-gray-200 bg-gray-50">{item.category}</Badge>
                                     </div>
-                                    <button onClick={() => onRemove(item.cartId)} className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors shrink-0">
+                                    <button type="button" onClick={() => onRemove(item.cartId)} aria-label="Eliminar producto" title="Eliminar producto" className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors shrink-0">
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>

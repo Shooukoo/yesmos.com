@@ -1,26 +1,15 @@
 "use client"
 
-// 1. AGREGAMOS 'useMemo' A LOS IMPORTS
 import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { Search, ShoppingCart, Phone, MapPin, Filter, Loader2, ExternalLink, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
-
-interface Product {
-    id: number
-    barcode?: string
-    name: string
-    price: number
-    category: string
-    image: string
-    url: string
-    available: boolean
-    stock?: number
-}
+import { getProducts, type Product } from "@/lib/products-cache"
 
 const ITEMS_PER_PAGE = 15; // Cantidad inicial de productos
 
@@ -30,6 +19,7 @@ const normalizeText = (text: string) => {
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
 }
+
 
 export function ProductCatalog() {
     // Estados de datos
@@ -45,38 +35,12 @@ export function ProductCatalog() {
     // Estado para paginación
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE)
 
-    // 1. Carga de datos (Lógica Híbrida Local/Producción)
+    // 1. Carga de datos — usa caché compartida para no re-scrapear en cada navegación
     useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const apiUrl = process.env.NODE_ENV === 'development'
-                    ? "/api/refacciones"
-                    : "api/refacciones.php";
-
-                const response = await fetch(apiUrl)
-
-                if (!response.ok) {
-                    if (apiUrl.includes('.php')) {
-                        console.warn("Fallo carga PHP, intentando API route local...");
-                        const retry = await fetch("/api/refacciones");
-                        if (retry.ok) {
-                            const data = await retry.json();
-                            setProducts(data);
-                            return;
-                        }
-                    }
-                    throw new Error("Error fetching data");
-                }
-
-                const data = await response.json()
-                setProducts(data)
-            } catch (error) {
-                console.error("Error cargando catálogo:", error)
-            } finally {
-                setLoading(false)
-            }
-        }
-        fetchProducts()
+        getProducts()
+            .then(setProducts)
+            .catch((err) => console.error("Error cargando catálogo:", err))
+            .finally(() => setLoading(false))
     }, [])
 
     // Reiniciar paginación al filtrar
@@ -251,7 +215,7 @@ export function ProductCatalog() {
                                 </div>
 
                                 <div className="aspect-square relative mb-0 overflow-hidden bg-white border-b border-gray-50">
-                                    <a href={product.url} target="_self" className="block h-full w-full p-4" title="img-product">
+                                    <Link href={`/producto?id=${product.id}`} className="block h-full w-full p-4">
                                         <Image
                                             src={product.image && product.image.startsWith('http') ? product.image : "https://placehold.co/400x400?text=Sin+Imagen"}
                                             alt={product.name}
@@ -260,7 +224,7 @@ export function ProductCatalog() {
                                             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                                             loading="lazy"
                                         />
-                                    </a>
+                                    </Link>
                                 </div>
 
                                 {/* Contenido */}
@@ -282,9 +246,9 @@ export function ProductCatalog() {
                                         <div className="grid grid-cols-1 gap-2">
                                             {product.available ? (
                                                 <Button asChild variant="outline" className="w-full border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 h-9 text-sm">
-                                                    <a href={product.url} target="_self">
+                                                    <Link href={`/producto?id=${product.id}`}>
                                                         Ver Detalles <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
-                                                    </a>
+                                                    </Link>
                                                 </Button>
                                             ) : (
                                                 <Button variant="outline" disabled className="w-full border-gray-100 text-gray-400 h-9 text-sm cursor-not-allowed">

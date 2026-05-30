@@ -1,6 +1,6 @@
 import { Header } from "@/components/header"
 import { Hero } from "@/components/hero"
-import { ProductCatalog } from "@/components/product-catalog" // <--- Cambio aquí
+import { ProductCatalog } from "@/components/product-catalog"
 import { ServicesSection } from "@/components/services-section"
 import { Footer } from "@/components/footer"
 import type { Metadata } from "next"

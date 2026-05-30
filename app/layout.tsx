@@ -1,14 +1,17 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Suspense } from "react"
 import { Toaster } from "@/components/ui/sonner"
-import { Inter as V0_Font_Inter } from 'next/font/google'
-import Script from 'next/script' // <--- Importamos Script para mejor manejo (opcional, pero nativo es mejor aqui)
+import { Inter } from 'next/font/google'
 
-// Initialize fonts
-const _inter = V0_Font_Inter({ subsets: ['latin'], weight: ["100","200","300","400","500","600","700","800","900"], variable: '--font-sans' })
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#3b82f6',
+}
 
 export const metadata: Metadata = {
   title: {
@@ -142,14 +145,14 @@ export default function RootLayout({
 
   return (
     <html lang="es">
-      <body className={`${_inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         {/* Script JSON-LD inyectado para SEO */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         
-        <Suspense>
+        <Suspense fallback={null}>
           {children}
         </Suspense>
         <Analytics />
