@@ -110,6 +110,8 @@ function categorize(name: string): string {
     if (n.includes("LENTE") || n.includes("CAMARA")) return "Cámaras";
     if (n.includes("SIM") || n.includes("BANDEJA")) return "Bandejas SIM";
     if (n.includes("ACCESORIO") || n.includes("CABLE") || n.includes("FUNDA")) return "Accesorios";
+    if (n.includes("ALTAVOZ")) return "Altavoz";
+    if (n.includes("ENCENDIDO")) return "Encendido y volumen";
     return "Otros";
 }
 

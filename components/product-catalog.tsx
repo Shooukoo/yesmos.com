@@ -1,17 +1,27 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { Search, ShoppingCart, Phone, MapPin, Filter, Loader2, ExternalLink, ChevronDown } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect, useMemo, useRef } from "react"
+import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { getProducts, type Product } from "@/lib/products-cache"
+import { CatalogHeader } from "@/components/catalog/catalog-header"
+import {
+    CatalogToolbar,
+    type SortOption,
+    type AvailabilityFilter,
+    type GridDensity,
+} from "@/components/catalog/catalog-toolbar"
+import { ProductCard } from "@/components/catalog/product-card"
+import { CatalogPagination } from "@/components/catalog/catalog-pagination"
 
-const ITEMS_PER_PAGE = 15; // Cantidad inicial de productos
+const ITEMS_PER_PAGE = 24 // Divisible entre 2, 3 y 4 → filas completas en todas las densidades
+
+// Clases literales completas para que Tailwind JIT las detecte
+const GRID_BY_DENSITY: Record<GridDensity, string> = {
+    3: "grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3",
+    4: "grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4",
+}
 
 const normalizeText = (text: string) => {
     return text
@@ -20,6 +30,19 @@ const normalizeText = (text: string) => {
         .replace(/[\u0300-\u036f]/g, "")
 }
 
+function SkeletonGrid() {
+    return (
+        <div className={GRID_BY_DENSITY[4]}>
+            {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i}>
+                    <Skeleton className="aspect-square w-full rounded-md" />
+                    <Skeleton className="mt-3 h-4 w-3/4" />
+                    <Skeleton className="mt-2 h-4 w-1/4" />
+                </div>
+            ))}
+        </div>
+    )
+}
 
 export function ProductCatalog() {
     // Estados de datos
@@ -29,11 +52,12 @@ export function ProductCatalog() {
     // Estados de UI
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedCategory, setSelectedCategory] = useState<string>("Todos")
-    const [cartCount, setCartCount] = useState(0)
-    const [cartTotal, setCartTotal] = useState(0)
+    const [availability, setAvailability] = useState<AvailabilityFilter>("all")
+    const [sortBy, setSortBy] = useState<SortOption>("relevance")
+    const [density, setDensity] = useState<GridDensity>(4)
+    const [currentPage, setCurrentPage] = useState(1)
 
-    // Estado para paginación
-    const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE)
+    const gridTopRef = useRef<HTMLDivElement>(null)
 
     // 1. Carga de datos — usa caché compartida para no re-scrapear en cada navegación
     useEffect(() => {
@@ -43,10 +67,10 @@ export function ProductCatalog() {
             .finally(() => setLoading(false))
     }, [])
 
-    // Reiniciar paginación al filtrar
+    // Volver a la página 1 al cambiar cualquier filtro u orden
     useEffect(() => {
-        setVisibleCount(ITEMS_PER_PAGE)
-    }, [searchQuery, selectedCategory])
+        setCurrentPage(1)
+    }, [searchQuery, selectedCategory, availability, sortBy])
 
     // 2. Obtener categorías únicas dinámicamente
     const categories = useMemo(() => {
@@ -64,10 +88,13 @@ export function ProductCatalog() {
             const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory
             if (!matchesCategory) return false
 
-            // C. Si no hay búsqueda escrita, pasar (ahorra recursos)
+            // C. Filtro por Disponibilidad
+            if (availability === "in-stock" && !product.available) return false
+
+            // D. Si no hay búsqueda escrita, pasar (ahorra recursos)
             if (queryTerms.length === 0) return true
 
-            // D. Búsqueda Inteligente (Tokens)
+            // E. Búsqueda Inteligente (Tokens)
             const cleanName = normalizeText(product.name)
 
             // Verifica que TODAS las palabras escritas estén en el nombre
@@ -76,227 +103,105 @@ export function ProductCatalog() {
 
             return matchesSearch
         })
-    }, [products, searchQuery, selectedCategory])
+    }, [products, searchQuery, selectedCategory, availability])
 
-    // 4. Paginación
-    const displayedProducts = filteredProducts.slice(0, visibleCount)
+    // 4. Ordenamiento (copia el arreglo: nunca mutar el memo anterior)
+    const sortedProducts = useMemo(() => {
+        if (sortBy === "relevance") return filteredProducts
+        const sorted = [...filteredProducts]
+        switch (sortBy) {
+            case "price-asc":
+                sorted.sort((a, b) => a.price - b.price)
+                break
+            case "price-desc":
+                sorted.sort((a, b) => b.price - a.price)
+                break
+            case "name-asc":
+                sorted.sort((a, b) => a.name.localeCompare(b.name, "es"))
+                break
+        }
+        return sorted
+    }, [filteredProducts, sortBy])
 
-    const handleLoadMore = () => {
-        setVisibleCount((prev) => prev + ITEMS_PER_PAGE)
-    }
+    // 5. Paginación (safePage evita el frame con grid vacío antes de que corra el effect de reset)
+    const totalPages = Math.max(1, Math.ceil(sortedProducts.length / ITEMS_PER_PAGE))
+    const safePage = Math.min(currentPage, totalPages)
+    const pageProducts = sortedProducts.slice(
+        (safePage - 1) * ITEMS_PER_PAGE,
+        safePage * ITEMS_PER_PAGE,
+    )
 
-    // Nota: Esta función solo actualiza contadores visuales en este ejemplo
-    const addToCart = (price: number) => {
-        setCartCount((prev) => prev + 1)
-        setCartTotal((prev) => prev + price)
-    }
-
-    if (loading) {
-        return (
-            <div className="flex h-[50vh] flex-col items-center justify-center gap-4 bg-gray-50">
-                <Loader2 className="h-10 w-10 animate-spin text-[#3b82f6]" />
-                <p className="text-gray-500 font-medium">Sincronizando catálogo con proveedores...</p>
-            </div>
-        )
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page)
+        gridTopRef.current?.scrollIntoView({ behavior: "smooth" })
     }
 
     return (
-        <section className="container mx-auto px-4 py-8" id="catalogo">
+        <>
+            <CatalogHeader />
 
-            {/* Cabecera de Tienda */}
-            <div className="mb-12 flex flex-col items-center gap-8 md:flex-row md:items-start md:justify-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="flex h-32 w-32 flex-shrink-0 items-center justify-center rounded-lg border bg-blue-50 p-3 shadow-sm overflow-hidden">
-                    <div className="relative h-full w-full">
-                        <Image
-                            src="/Logo_Yesmos_Celu_Azul.png"
-                            alt="Logo Yesmos Refacciones"
-                            fill
-                            className="object-contain"
-                            priority
-                            sizes="104px"
-                        />
-                    </div>
-                </div>
-
-                <div className="text-center md:text-left w-full md:w-auto">
-                    <h1 className="mb-2 text-3xl font-bold text-gray-900">CATÁLOGO DIGITAL</h1>
-                    <p className="mb-4 text-gray-500">Refacciones y Accesorios en Tiempo Real</p>
-                    <div className="space-y-1 text-sm text-gray-600 bg-gray-50 p-3 rounded-md inline-block w-full md:w-auto">
-                        <p className="flex items-center justify-center gap-2 md:justify-start">
-                            <MapPin className="h-4 w-4 text-[#3b82f6]" />
-                            Av. Constitución #206, Centro, Sahuayo, Mich.
-                        </p>
-                        <p className="flex items-center justify-center gap-2 md:justify-start">
-                            <Phone className="h-4 w-4 text-[#3b82f6]" />
-                            WhatsApp: 353 184 4881
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Barra de Búsqueda */}
-            <div className="mb-8 flex w-full items-center gap-0 max-w-4xl mx-auto shadow-sm">
-                <div className="relative w-full">
+            <section className="container mx-auto px-4 py-8" id="catalogo">
+                {/* Barra de Búsqueda */}
+                <div className="relative mx-auto mb-6 w-full max-w-xl">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <Input
                         type="text"
                         placeholder="Buscar refacción..."
-                        className="h-12 w-full rounded-r-none border-gray-300 bg-white pl-4 text-base focus-visible:ring-[#3b82f6] focus-visible:border-[#3b82f6]"
+                        className="h-11 w-full rounded-md border-gray-200 bg-white pl-10 text-base focus-visible:ring-[#3b82f6]/30 focus-visible:border-[#3b82f6]"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </div>
-                <Button
-                    className="h-12 rounded-l-none border border-l-0 border-gray-300 bg-gray-50 px-6 text-gray-500 hover:bg-gray-100 hover:text-[#3b82f6]"
-                    variant="ghost"
-                >
-                    <Search className="h-5 w-5" />
-                </Button>
-            </div>
 
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-4 lg:grid-cols-5">
-                {/* Sidebar Filtros */}
-                <div className="md:col-span-1">
-                    <div className="sticky top-24 rounded-lg border bg-white p-5 shadow-sm">
-                        <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900 border-b pb-3">
-                            FILTROS <Filter className="h-4 w-4" />
-                        </h3>
+                <div ref={gridTopRef} className="scroll-mt-20" />
 
-                        <RadioGroup value={selectedCategory} onValueChange={setSelectedCategory} className="space-y-3">
-                            {categories.map((category) => (
-                                <div key={category} className="flex items-center space-x-2 group cursor-pointer">
-                                    <RadioGroupItem
-                                        value={category}
-                                        id={`cat-${category}`}
-                                        className="text-[#3b82f6] border-gray-300 data-[state=checked]:border-[#3b82f6]"
-                                    />
-                                    <Label
-                                        htmlFor={`cat-${category}`}
-                                        className="cursor-pointer text-sm font-medium text-gray-600 group-hover:text-[#3b82f6] transition-colors w-full py-1"
-                                    >
-                                        {category}
-                                    </Label>
-                                </div>
-                            ))}
-                        </RadioGroup>
-                    </div>
-                </div>
+                {loading ? (
+                    <>
+                        <div className="mb-8 border-y border-gray-200 py-3">
+                            <Skeleton className="h-11 w-full max-w-md" />
+                        </div>
+                        <SkeletonGrid />
+                    </>
+                ) : (
+                    <>
+                        <CatalogToolbar
+                            categories={categories}
+                            category={selectedCategory}
+                            onCategoryChange={setSelectedCategory}
+                            availability={availability}
+                            onAvailabilityChange={setAvailability}
+                            sort={sortBy}
+                            onSortChange={setSortBy}
+                            density={density}
+                            onDensityChange={setDensity}
+                            resultCount={sortedProducts.length}
+                        />
 
-                {/* Grid de Productos */}
-                <div className="md:col-span-3 lg:col-span-4">
-                    <div className="flex justify-between items-end mb-6 pb-2 border-b border-gray-100">
-                        <h3 className="text-lg font-bold text-gray-900">Resultados</h3>
-                        <span className="text-sm text-gray-500 font-medium">
-                            Mostrando {Math.min(visibleCount, filteredProducts.length)} de {filteredProducts.length}
-                        </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {displayedProducts.map((product) => (
-                            <div
-                                key={product.id}
-                                className={`group relative flex flex-col overflow-hidden rounded-lg border bg-white transition-all animate-in fade-in zoom-in-95 duration-300 ${product.available
-                                        ? 'border-gray-200 hover:shadow-lg hover:border-[#3b82f6]/30'
-                                        : 'border-gray-100 opacity-60 grayscale'
-                                    }`}
-                            >
-                                {/* Badge de stock */}
-                                <div className="absolute top-2 right-2 z-10">
-                                    {product.available ? (
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 border border-green-200 px-2 py-0.5 text-[10px] font-bold text-green-600">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-                                            En stock{product.stock !== undefined ? ` (${product.stock})` : ''}
-                                        </span>
-                                    ) : (
-                                        <span className="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-[10px] font-bold text-red-500">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-red-400"></span>
-                                            Sin stock
-                                        </span>
-                                    )}
+                        {sortedProducts.length > 0 ? (
+                            <>
+                                <div className={GRID_BY_DENSITY[density]}>
+                                    {pageProducts.map((product) => (
+                                        <ProductCard key={product.id} product={product} />
+                                    ))}
                                 </div>
 
-                                <div className="aspect-square relative mb-0 overflow-hidden bg-white border-b border-gray-50">
-                                    <Link href={`/producto?id=${product.id}`} className="block h-full w-full p-4">
-                                        <Image
-                                            src={product.image && product.image.startsWith('http') ? product.image : "https://placehold.co/400x400?text=Sin+Imagen"}
-                                            alt={product.name}
-                                            fill
-                                            className="object-contain p-2 transition-transform duration-300 group-hover:scale-105"
-                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                                            loading="lazy"
-                                        />
-                                    </Link>
-                                </div>
-
-                                {/* Contenido */}
-                                <div className="flex flex-1 flex-col p-4">
-                                    <div className="mb-3">
-                                        <Badge variant="secondary" className="mb-2 text-[#3b82f6] bg-blue-50 uppercase text-[10px] font-bold">
-                                            {product.category}
-                                        </Badge>
-                                        <h3 className={`text-sm font-medium line-clamp-2 min-h-[40px] leading-snug ${product.available ? 'text-gray-900' : 'text-gray-400'}`} title={product.name}>
-                                            {product.name}
-                                        </h3>
-                                    </div>
-
-                                    <div className="mt-auto pt-3 border-t border-gray-100">
-                                        <p className={`mb-3 text-xl font-black tracking-tight ${product.available ? 'text-gray-900' : 'text-gray-400'}`}>
-                                            ${product.price.toFixed(2)}
-                                        </p>
-
-                                        <div className="grid grid-cols-1 gap-2">
-                                            {product.available ? (
-                                                <Button asChild variant="outline" className="w-full border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 h-9 text-sm">
-                                                    <Link href={`/producto?id=${product.id}`}>
-                                                        Ver Detalles <ExternalLink className="h-3 w-3 ml-2 opacity-50" />
-                                                    </Link>
-                                                </Button>
-                                            ) : (
-                                                <Button variant="outline" disabled className="w-full border-gray-100 text-gray-400 h-9 text-sm cursor-not-allowed">
-                                                    Sin existencias
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
+                                <CatalogPagination
+                                    className="mt-12"
+                                    currentPage={safePage}
+                                    totalPages={totalPages}
+                                    onPageChange={handlePageChange}
+                                />
+                            </>
+                        ) : (
+                            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-16 text-center">
+                                <Search className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+                                <h3 className="text-lg font-medium text-gray-900">No encontramos resultados</h3>
+                                <p className="text-gray-500">Intenta cambiar los filtros o buscar otro término.</p>
                             </div>
-                        ))}
-                    </div>
-
-                    {/* Botón Cargar Más */}
-                    {visibleCount < filteredProducts.length && (
-                        <div className="mt-16 flex justify-center pb-8">
-                            <Button
-                                onClick={handleLoadMore}
-                                className="min-w-[250px] bg-[#3b82f6] hover:bg-[#2563eb] text-white font-bold h-12 rounded-full shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 text-base"
-                            >
-                                <ChevronDown className="mr-2 h-5 w-5" />
-                                Cargar más productos
-                            </Button>
-                        </div>
-                    )}
-
-                    {filteredProducts.length === 0 && (
-                        <div className="col-span-full py-16 text-center bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                            <Search className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                            <h3 className="text-lg font-medium text-gray-900">No encontramos resultados</h3>
-                            <p className="text-gray-500">Intenta cambiar los filtros o buscar otro término.</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Widget Flotante del Carrito (Visual) */}
-            {cartCount > 0 && (
-                <div className="fixed bottom-6 left-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
-                    <Button className="flex h-auto flex-col items-start rounded-full border border-blue-200 bg-white px-6 py-2 text-[#3b82f6] shadow-xl hover:bg-blue-50 transition-transform hover:scale-105">
-                        <div className="flex items-center gap-2">
-                            <ShoppingCart className="h-5 w-5 fill-current" />
-                            <span className="font-bold">{cartCount}</span>
-                        </div>
-                        <span className="text-sm font-medium text-gray-900">${cartTotal.toFixed(2)}</span>
-                    </Button>
-                </div>
-            )}
-        </section>
+                        )}
+                    </>
+                )}
+            </section>
+        </>
     )
 }

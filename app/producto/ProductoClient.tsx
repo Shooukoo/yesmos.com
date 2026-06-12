@@ -1,25 +1,39 @@
 "use client"
 
 import { useSearchParams } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, MapPin, Phone, Tag, Barcode, PackageX, MessageCircle, ExternalLink, CheckCircle2, XCircle } from "lucide-react"
+import { MapPin, Phone, Tag, Barcode, PackageX, MessageCircle, ExternalLink, CheckCircle2, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { RelatedProducts } from "@/components/catalog/related-products"
 import { getProducts, type Product } from "@/lib/products-cache"
+
+const BENEFITS = [
+    "Existencias y precios verificados al día",
+    "Recoge en tienda: Av. Constitución #206, Sahuayo",
+    "Te asesoramos para confirmar compatibilidad con tu modelo",
+]
 
 export function ProductDetailSkeleton() {
     return (
-        <div className="flex min-h-screen flex-col bg-[#f9fafb]">
+        <div className="flex min-h-screen flex-col bg-[#f9fafb] pb-24 md:pb-0">
             <Header />
             <main className="flex-1">
                 <div className="container mx-auto px-4 py-10 max-w-5xl">
                     {/* Breadcrumb skeleton */}
-                    <Skeleton className="mb-6 h-8 w-40 rounded-lg" />
+                    <Skeleton className="mb-6 h-4 w-56 rounded-md" />
 
                     <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:gap-14">
                         {/* Imagen skeleton */}
@@ -27,25 +41,29 @@ export function ProductDetailSkeleton() {
 
                         {/* Info skeleton */}
                         <div className="flex flex-col">
-                            {/* Badges row */}
-                            <div className="flex items-center gap-2">
-                                <Skeleton className="h-5 w-20 rounded-full" />
-                                <Skeleton className="h-5 w-24 rounded-full" />
-                            </div>
                             {/* Nombre */}
-                            <Skeleton className="mt-3 h-8 w-full rounded-md" />
+                            <Skeleton className="h-8 w-full rounded-md" />
                             <Skeleton className="mt-2 h-8 w-4/5 rounded-md" />
+                            {/* Chips */}
+                            <div className="mt-3 flex items-center gap-2">
+                                <Skeleton className="h-6 w-24 rounded-full" />
+                                <Skeleton className="h-6 w-32 rounded-full" />
+                            </div>
                             {/* Precio */}
                             <div className="mt-5 flex items-baseline gap-2">
                                 <Skeleton className="h-10 w-36 rounded-md" />
                                 <Skeleton className="h-4 w-10 rounded-md" />
                             </div>
-                            {/* CTAs */}
-                            <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
-                                <Skeleton className="h-11 flex-1 rounded-full" />
-                                <Skeleton className="h-11 flex-1 rounded-full" />
+                            {/* Beneficios */}
+                            <div className="mt-6 space-y-2.5">
+                                <Skeleton className="h-4 w-3/4 rounded-md" />
+                                <Skeleton className="h-4 w-4/5 rounded-md" />
+                                <Skeleton className="h-4 w-2/3 rounded-md" />
                             </div>
-                            <Skeleton className="mt-3 mx-auto h-3.5 w-44 rounded-md" />
+                            {/* CTAs */}
+                            <Skeleton className="mt-7 h-12 w-full rounded-full" />
+                            <Skeleton className="mt-2.5 h-11 w-full rounded-full" />
+                            <Skeleton className="mt-3 mx-auto h-3.5 w-52 rounded-md" />
                             {/* Footer info */}
                             <Skeleton className="mt-6 h-px w-full" />
                             <div className="mt-4 space-y-2">
@@ -67,10 +85,16 @@ export function ProductoClient() {
     const id = searchParams.get("id")
 
     const [product, setProduct] = useState<Product | null>(null)
+    const [allProducts, setAllProducts] = useState<Product[]>([])
     const [loading, setLoading] = useState(true)
     const [notFound, setNotFound] = useState(false)
 
     useEffect(() => {
+        // Resetear estado al cambiar de producto (navegación entre relacionados)
+        setLoading(true)
+        setProduct(null)
+        setNotFound(false)
+
         if (!id) {
             setNotFound(true)
             setLoading(false)
@@ -79,6 +103,7 @@ export function ProductoClient() {
 
         getProducts()
             .then((products) => {
+                setAllProducts(products)
                 const found = products.find((p) => String(p.id) === String(id))
                 if (found) setProduct(found)
                 else setNotFound(true)
@@ -88,7 +113,18 @@ export function ProductoClient() {
                 setNotFound(true)
             })
             .finally(() => setLoading(false))
+
+        // Las navegaciones same-pathname con query pueden preservar scroll
+        window.scrollTo({ top: 0 })
     }, [id])
+
+    const related = useMemo(() => {
+        if (!product) return []
+        return allProducts
+            .filter((p) => p.category === product.category && p.id !== product.id)
+            .sort((a, b) => Number(b.available) - Number(a.available))
+            .slice(0, 4)
+    }, [allProducts, product])
 
     if (loading) {
         return <ProductDetailSkeleton />
@@ -114,28 +150,56 @@ export function ProductoClient() {
     }
 
     const whatsappMessage = encodeURIComponent(
-        `Hola, me interesa este producto del catálogo:\n\n*${product.name}*\nPrecio: $${product.price.toFixed(2)}\n\n¿Está disponible?`
+        `Hola, me interesa este producto del catálogo:\n\n*${product.name}*\nPrecio: $${product.price.toFixed(2)}\n\n${product.available ? "¿Está disponible?" : "¿Cuándo estará disponible?"}`
     )
+    const whatsappHref = `https://wa.me/523531844881?text=${whatsappMessage}`
 
     return (
-        <div className="flex min-h-screen flex-col bg-[#f9fafb]">
+        <div className="flex min-h-screen flex-col bg-[#f9fafb] pb-24 md:pb-0">
             <Header />
             <main className="flex-1">
                 <div className="container mx-auto px-4 py-10 max-w-5xl">
 
                     {/* Breadcrumb */}
-                    <Link
-                        href="/#catalogo"
-                        className="mb-6 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-[#3b82f6] transition-all"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        Volver al catálogo
-                    </Link>
+                    <Breadcrumb className="mb-6">
+                        <BreadcrumbList>
+                            <BreadcrumbItem>
+                                <BreadcrumbLink asChild>
+                                    <Link href="/">Inicio</Link>
+                                </BreadcrumbLink>
+                            </BreadcrumbItem>
+                            <BreadcrumbSeparator />
+                            <BreadcrumbItem>
+                                <BreadcrumbLink asChild>
+                                    <Link href="/#catalogo">Catálogo</Link>
+                                </BreadcrumbLink>
+                            </BreadcrumbItem>
+                            <BreadcrumbSeparator />
+                            <BreadcrumbItem>
+                                <BreadcrumbPage className="max-w-[200px] truncate sm:max-w-xs">
+                                    {product.name}
+                                </BreadcrumbPage>
+                            </BreadcrumbItem>
+                        </BreadcrumbList>
+                    </Breadcrumb>
 
                     <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:gap-14">
 
                         {/* ── Imagen ── */}
-                        <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                        <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-gray-100">
+                            <span
+                                className={`absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-xs font-medium backdrop-blur-sm ${
+                                    product.available ? "text-green-700" : "text-gray-500"
+                                }`}
+                            >
+                                <span
+                                    className={`h-1.5 w-1.5 rounded-full ${product.available ? "bg-green-500" : "bg-gray-400"}`}
+                                />
+                                {product.available
+                                    ? `En stock${product.stock !== undefined ? ` · ${product.stock} uds.` : ""}`
+                                    : "Agotado"}
+                            </span>
+
                             <Image
                                 src={
                                     product.image && product.image.startsWith("http")
@@ -144,87 +208,87 @@ export function ProductoClient() {
                                 }
                                 alt={product.name}
                                 fill
-                                className="object-contain p-8 transition-transform duration-500 hover:scale-105"
+                                className={`object-contain p-10 mix-blend-multiply ${product.available ? "" : "opacity-60 grayscale"}`}
                                 sizes="(max-width: 768px) 100vw, 50vw"
                                 priority
                             />
-
-                            {/* Badge de stock sobre la imagen */}
-                            <div className="absolute left-3 top-3">
-                                {product.available ? (
-                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-xs font-bold text-green-700">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                                        En stock{product.stock !== undefined ? ` · ${product.stock} uds.` : ""}
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200 px-3 py-1 text-xs font-bold text-red-600">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
-                                        Sin stock
-                                    </span>
-                                )}
-                            </div>
                         </div>
 
                         {/* ── Info ── */}
                         <div className="flex flex-col justify-start">
 
-                            {/* Categoría + Estado en la misma fila */}
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <Badge variant="secondary" className="w-fit bg-blue-50 text-[#3b82f6] uppercase text-[10px] font-bold tracking-wider">
-                                    <Tag className="mr-1.5 h-3 w-3" />
+                            {/* Nombre */}
+                            <h1 className="text-2xl font-semibold leading-tight tracking-tight text-gray-900 sm:text-3xl">
+                                {product.name}
+                            </h1>
+
+                            {/* Chips de atributos */}
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-[#3b82f6]">
+                                    <Tag className="h-3 w-3" />
                                     {product.category}
-                                </Badge>
-                                {product.available ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-0.5 text-[11px] font-semibold text-green-700">
-                                        <CheckCircle2 className="h-3 w-3" />
-                                        Disponible
+                                </span>
+                                {product.barcode && (
+                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 font-mono text-xs text-gray-600">
+                                        <Barcode className="h-3 w-3" />
+                                        {product.barcode}
                                     </span>
-                                ) : (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-[11px] font-semibold text-red-600">
+                                )}
+                                {!product.available && (
+                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-600">
                                         <XCircle className="h-3 w-3" />
                                         Sin existencias
                                     </span>
                                 )}
                             </div>
 
-                            {/* Nombre */}
-                            <h1 className="mt-3 text-2xl font-bold leading-tight text-gray-900 sm:text-3xl">
-                                {product.name}
-                            </h1>
-
                             {/* Precio */}
                             <div className="mt-5 flex items-baseline gap-2">
-                                <span className="text-4xl font-black tabular-nums text-gray-900">
+                                <span
+                                    className={`text-4xl font-semibold tabular-nums tracking-tight ${
+                                        product.available ? "text-gray-900" : "text-gray-400"
+                                    }`}
+                                >
                                     ${product.price.toFixed(2)}
                                 </span>
                                 <span className="text-sm font-medium text-gray-400">MXN</span>
                             </div>
 
+                            {/* Beneficios */}
+                            <ul className="mt-6 space-y-2.5">
+                                {BENEFITS.map((benefit) => (
+                                    <li key={benefit} className="flex items-start gap-2.5 text-sm text-gray-600">
+                                        <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#3b82f6]" />
+                                        {benefit}
+                                    </li>
+                                ))}
+                            </ul>
+
                             {/* CTAs */}
-                            <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
+                            <div className="mt-7">
                                 <Button
                                     asChild
-                                    className="h-11 flex-1 rounded-full bg-[#25d366] text-white hover:bg-[#1ebe5d] font-bold shadow-md shadow-green-200/60 transition-all hover:-translate-y-0.5"
+                                    className="h-12 w-full rounded-full bg-[#25d366] font-bold text-white shadow-md shadow-green-200/60 transition-all hover:-translate-y-0.5 hover:bg-[#1ebe5d]"
                                 >
-                                    <a
-                                        href={`https://wa.me/523531844881?text=${whatsappMessage}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
+                                    <a href={whatsappHref} target="_blank" rel="noopener noreferrer">
                                         <MessageCircle className="mr-2 h-4 w-4" />
-                                        Consultar por WhatsApp
+                                        {product.available
+                                            ? `Consultar por WhatsApp · $${product.price.toFixed(2)}`
+                                            : "Preguntar disponibilidad"}
                                     </a>
                                 </Button>
 
                                 <Button
                                     asChild
                                     variant="outline"
-                                    className="h-11 flex-1 rounded-full border-gray-200 text-gray-600 hover:border-[#3b82f6] hover:text-[#3b82f6] transition-all"
+                                    className="mt-2.5 h-11 w-full rounded-full border-gray-200 text-gray-600 transition-all hover:border-[#3b82f6] hover:text-[#3b82f6]"
                                 >
-                                    <Link href="/cotizaciones">
-                                        Cotizar precio
-                                    </Link>
+                                    <Link href="/cotizaciones">Cotizar precio</Link>
                                 </Button>
+
+                                <p className="mt-3 text-center text-xs text-gray-400">
+                                    Respuesta en horario de tienda · 353 184 4881
+                                </p>
                             </div>
 
                             {/* Enlace proveedor — subordinado */}
@@ -240,13 +304,6 @@ export function ProductoClient() {
 
                             {/* Info de tienda */}
                             <div className="mt-6 border-t border-gray-100 pt-4 space-y-2 text-sm text-gray-500">
-                                {product.barcode && (
-                                    <p className="flex items-center gap-2">
-                                        <Barcode className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
-                                        <span className="text-gray-400">Cód. barras:</span>
-                                        <span className="font-mono text-gray-600">{product.barcode}</span>
-                                    </p>
-                                )}
                                 <p className="flex items-center gap-2">
                                     <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
                                     Av. Constitución #206, Sahuayo, Mich.
@@ -258,9 +315,33 @@ export function ProductoClient() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Productos relacionados */}
+                    <RelatedProducts products={related} />
                 </div>
             </main>
             <Footer />
+
+            {/* Barra CTA fija (solo móvil) */}
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden">
+                <div className="container mx-auto flex items-center gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wide text-gray-400">Precio</p>
+                        <p className="text-lg font-semibold tabular-nums text-gray-900">
+                            ${product.price.toFixed(2)}
+                        </p>
+                    </div>
+                    <Button
+                        asChild
+                        className="h-11 flex-1 rounded-full bg-[#25d366] font-bold text-white hover:bg-[#1ebe5d]"
+                    >
+                        <a href={whatsappHref} target="_blank" rel="noopener noreferrer">
+                            <MessageCircle className="mr-1.5 h-4 w-4" />
+                            {product.available ? "Consultar" : "Preguntar"}
+                        </a>
+                    </Button>
+                </div>
+            </div>
         </div>
     )
 }

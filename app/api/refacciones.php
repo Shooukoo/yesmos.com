@@ -159,6 +159,8 @@ foreach ($rows as $row) {
     elseif (strpos($n,'LENTE')!==false || strpos($n,'CAMARA')!==false)                             $cat = 'Cámaras';
     elseif (strpos($n,'SIM')!==false || strpos($n,'BANDEJA')!==false)                              $cat = 'Bandejas SIM';
     elseif (strpos($n,'ACCESORIO')!==false || strpos($n,'CABLE')!==false || strpos($n,'FUNDA')!==false) $cat = 'Accesorios';
+    elseif (strpos($n,'ALTAVOZ')!==false)                                                         $cat = 'Altavoz';
+    elseif (strpos($n,'ENCENDIDO')!==false)                                                       $cat = 'Encendido y volumen';
     else                                                                                            $cat = 'Otros';
 
     $products[] = [
