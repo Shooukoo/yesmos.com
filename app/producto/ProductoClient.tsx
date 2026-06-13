@@ -19,6 +19,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { RelatedProducts } from "@/components/catalog/related-products"
 import { getProducts, type Product } from "@/lib/products-cache"
+import { getRelatedProducts } from "@/lib/related-products"
 
 const BENEFITS = [
     "Existencias y precios verificados al día",
@@ -28,7 +29,7 @@ const BENEFITS = [
 
 export function ProductDetailSkeleton() {
     return (
-        <div className="flex min-h-screen flex-col bg-[#f9fafb] pb-24 md:pb-0">
+        <div className="flex min-h-screen flex-col bg-[#f9fafb]">
             <Header />
             <main className="flex-1">
                 <div className="container mx-auto px-4 py-10 max-w-5xl">
@@ -120,10 +121,7 @@ export function ProductoClient() {
 
     const related = useMemo(() => {
         if (!product) return []
-        return allProducts
-            .filter((p) => p.category === product.category && p.id !== product.id)
-            .sort((a, b) => Number(b.available) - Number(a.available))
-            .slice(0, 4)
+        return getRelatedProducts(product, allProducts)
     }, [allProducts, product])
 
     if (loading) {
@@ -155,7 +153,7 @@ export function ProductoClient() {
     const whatsappHref = `https://wa.me/523531844881?text=${whatsappMessage}`
 
     return (
-        <div className="flex min-h-screen flex-col bg-[#f9fafb] pb-24 md:pb-0">
+        <div className="flex min-h-screen flex-col bg-[#f9fafb]">
             <Header />
             <main className="flex-1">
                 <div className="container mx-auto px-4 py-10 max-w-5xl">
@@ -321,27 +319,6 @@ export function ProductoClient() {
                 </div>
             </main>
             <Footer />
-
-            {/* Barra CTA fija (solo móvil) */}
-            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden">
-                <div className="container mx-auto flex items-center gap-3 px-4 py-3">
-                    <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-wide text-gray-400">Precio</p>
-                        <p className="text-lg font-semibold tabular-nums text-gray-900">
-                            ${product.price.toFixed(2)}
-                        </p>
-                    </div>
-                    <Button
-                        asChild
-                        className="h-11 flex-1 rounded-full bg-[#25d366] font-bold text-white hover:bg-[#1ebe5d]"
-                    >
-                        <a href={whatsappHref} target="_blank" rel="noopener noreferrer">
-                            <MessageCircle className="mr-1.5 h-4 w-4" />
-                            {product.available ? "Consultar" : "Preguntar"}
-                        </a>
-                    </Button>
-                </div>
-            </div>
         </div>
     )
 }

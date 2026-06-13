@@ -4,7 +4,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader, SheetDescri
 import { Menu, Phone, Search, Home, Smartphone, Wrench, Calculator, Mail } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
-export function Header() {
+export function Header({ active }: { active?: "cotizador" } = {}) {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
@@ -23,7 +23,10 @@ export function Header() {
             Refacciones
           </Link>
           {/* Enlace Nuevo al Cotizador */}
-          <Link href="/cotizaciones" className="hover:text-[#3b82f6] transition-colors flex items-center gap-1">
+          <Link
+            href="/cotizaciones"
+            className={`flex items-center gap-1 transition-colors ${active === "cotizador" ? "text-[#3b82f6] font-semibold" : "hover:text-[#3b82f6]"}`}
+          >
             <Calculator className="h-4 w-4" />
             Cotizador
           </Link>
@@ -77,9 +80,9 @@ export function Header() {
               {/* Enlace Móvil al Cotizador */}
               <Link
                 href="/cotizaciones"
-                className="flex items-center gap-4 px-4 py-3.5 text-base font-medium text-gray-700 rounded-xl hover:bg-blue-50 hover:text-[#3b82f6] transition-all active:scale-[0.98]"
+                className={`flex items-center gap-4 px-4 py-3.5 text-base font-medium rounded-xl transition-all active:scale-[0.98] ${active === "cotizador" ? "bg-blue-50 text-[#3b82f6]" : "text-gray-700 hover:bg-blue-50 hover:text-[#3b82f6]"}`}
               >
-                <Calculator className="h-5 w-5 text-gray-500 group-hover:text-[#3b82f6]" />
+                <Calculator className={`h-5 w-5 ${active === "cotizador" ? "text-[#3b82f6]" : "text-gray-500"}`} />
                 Cotizador POS
               </Link>
 

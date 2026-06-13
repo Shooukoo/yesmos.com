@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, type RefObject, type ChangeEvent } from "react"
+import Image from "next/image"
 import {
     Trash2,
     Printer,
     MessageCircle,
     User,
     Phone,
-    ScanBarcode,
     Wrench,
     Upload,
     LinkIcon,
@@ -121,8 +121,8 @@ export function TicketSidebar({
             <div className="p-4 sm:p-5 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <div className="bg-blue-50 p-2.5 rounded-xl shadow-lg shadow-blue-500/30">
-                            <ScanBarcode className="h-5 w-5 text-white" />
+                        <div className="bg-white p-1.5 rounded-xl shadow-lg shadow-blue-500/30">
+                            <Image src="/logo-yesmos.png" alt="Yesmos Celulares" width={36} height={36} className="h-9 w-9 object-contain" />
                         </div>
                         <div>
                             <h2 className="font-bold text-lg leading-none tracking-tight">Ticket</h2>

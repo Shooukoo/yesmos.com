@@ -11,13 +11,20 @@ import {
     PlusCircle,
     ChevronDown,
 } from "lucide-react"
+import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Label } from "@/components/ui/label"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
 
 
 // Importamos los tipos desde el archivo que creamos en el paso 1
@@ -36,6 +43,11 @@ const PrintableTicket = dynamic(() => import('./TicketSidebar').then(mod => mod.
 // --- CONSTANTES ---
 const ITEMS_PER_PAGE = 15;
 const STORAGE_KEY = "YESMOS_POS_V1";
+
+// Mismo estilo de filtros que el catálogo de la home (catalog-toolbar.tsx)
+const labelClass = "text-[11px] font-medium uppercase tracking-wide text-gray-500"
+const triggerClass =
+    "h-11 w-full bg-white focus-visible:border-[#3b82f6] focus-visible:ring-[#3b82f6]/30 data-[size=default]:h-11"
 
 // Función de normalización
 const normalizeText = (text: string) => {
@@ -105,6 +117,12 @@ const ProductCard = ({ product, onAdd }: { product: ProductWithPrice; onAdd: (p:
                     loading="lazy"
                 />
                 <span className="absolute top-2 left-2 bg-gray-900/80 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-1 rounded-lg uppercase tracking-wider">{product.category}</span>
+                {!product.available && (
+                    <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-gray-500 backdrop-blur-sm">
+                        <span className="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+                        Agotado
+                    </span>
+                )}
             </div>
             <div className="p-3 flex flex-col gap-2 flex-1 justify-between border-t border-gray-100">
                 <h3 className="font-semibold text-gray-800 text-xs sm:text-sm leading-snug line-clamp-2 min-h-[2.5em]" title={product.name}>{product.name}</h3>
@@ -127,6 +145,7 @@ export function CotizadorClient() {
     const [laborCost, setLaborCost] = useState("")
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedCategory, setSelectedCategory] = useState("Todos")
+    const [availability, setAvailability] = useState<"all" | "in-stock">("all")
 
     const [isInitialized, setIsInitialized] = useState(false)
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE)
@@ -158,7 +177,7 @@ export function CotizadorClient() {
         fetchProducts()
     }, [])
 
-    useEffect(() => { setVisibleCount(ITEMS_PER_PAGE) }, [searchQuery, selectedCategory])
+    useEffect(() => { setVisibleCount(ITEMS_PER_PAGE) }, [searchQuery, selectedCategory, availability])
 
     const addToCart = (product: ProductWithPrice) => { const newItem: CartItem = { ...product, cartId: crypto.randomUUID() }; setCart((prev) => [...prev, newItem]); toast.success("Agregado al ticket", { duration: 1500, position: "bottom-center", icon: <Package className="h-4 w-4" /> }) }
     const removeFromCart = (cartId: string) => { setCart((prev) => prev.filter((item) => item.cartId !== cartId)); toast.info("Producto eliminado", { duration: 1000, position: "bottom-center" }) }
@@ -175,11 +194,12 @@ export function CotizadorClient() {
         return products.filter((p) => {
             const matchCat = selectedCategory === "Todos" || p.category === selectedCategory
             if (!matchCat) return false
+            if (availability === "in-stock" && !p.available) return false
             if (queryTerms.length === 0) return true
             const cleanName = normalizeText(p.name)
             return queryTerms.every((term) => cleanName.includes(term))
         })
-    }, [products, searchQuery, selectedCategory])
+    }, [products, searchQuery, selectedCategory, availability])
 
     const displayedProducts = useMemo(() => { return filteredProducts.slice(0, visibleCount) }, [filteredProducts, visibleCount])
     const handleLoadMore = () => { setVisibleCount((prev) => prev + ITEMS_PER_PAGE) }
@@ -206,17 +226,49 @@ export function CotizadorClient() {
                 <PrintableTicket cart={cart} totals={totals} clientName={clientName} clientPhone={clientPhone} companyData={companyData} />
             </div>
 
-            <div className="h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50/30 flex flex-col md:flex-row overflow-hidden print:hidden">
+            <div className="flex h-screen flex-col overflow-hidden print:hidden">
+            <Header active="cotizador" />
+            <div className="flex-1 min-h-0 bg-gradient-to-br from-gray-100 via-gray-50 to-blue-50/30 flex flex-col md:flex-row overflow-hidden">
                 <div className="flex-1 flex flex-col h-full min-w-0">
-                    <div className="bg-white/80 backdrop-blur-md px-4 sm:px-6 py-4 border-b border-gray-200/60 z-10 shadow-sm">
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="flex items-center gap-2"><div className="bg-gradient-to-br from-blue-500 to-blue-700 p-2 rounded-xl shadow-lg shadow-blue-500/20"><Package className="h-5 w-5 text-white" /></div><div className="hidden sm:block"><h1 className="font-black text-lg text-gray-900 leading-none">YESMOS</h1><p className="text-[10px] text-gray-500 uppercase tracking-wider">Cotizador</p></div></div>
-                            <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder="Buscar producto..." className="pl-10 bg-gray-50/80 border-gray-200 focus-visible:ring-blue-500 rounded-xl h-11" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
+                    <div className="bg-white/80 backdrop-blur-md px-4 sm:px-6 py-3 border-b border-gray-200/60 z-10 shadow-sm">
+                        <div className="flex flex-wrap items-end gap-3">
+                            <div className="hidden self-center md:block shrink-0 pr-1">
+                                <h1 className="font-bold text-base text-gray-900 leading-tight">Cotizador</h1>
+                                <p className="text-[11px] text-gray-500">{loading ? "Cargando catálogo..." : `${filteredProducts.length} de ${products.length} productos`}</p>
+                            </div>
+                            <div className="relative min-w-0 flex-1 basis-full sm:basis-0">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                <Input placeholder="Buscar producto..." className="h-11 w-full rounded-md border-gray-200 bg-white pl-10 text-base focus-visible:border-[#3b82f6] focus-visible:ring-[#3b82f6]/30" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                            </div>
+                            <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-none">
+                                <Label htmlFor="cotizador-categoria" className={labelClass}>Categoría</Label>
+                                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                    <SelectTrigger id="cotizador-categoria" className={`${triggerClass} sm:w-[170px]`}>
+                                        <SelectValue placeholder="Categoría" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {categories.map((cat) => (
+                                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-none">
+                                <Label htmlFor="cotizador-disponibilidad" className={labelClass}>Disponibilidad</Label>
+                                <Select value={availability} onValueChange={(v) => setAvailability(v as "all" | "in-stock")}>
+                                    <SelectTrigger id="cotizador-disponibilidad" className={`${triggerClass} sm:w-[160px]`}>
+                                        <SelectValue placeholder="Disponibilidad" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Todos</SelectItem>
+                                        <SelectItem value="in-stock">En existencia</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <ScrollArea className="w-full whitespace-nowrap pb-1"><div className="flex gap-2">{categories.map((cat) => (<Badge key={cat} variant={selectedCategory === cat ? "default" : "outline"} className={cn("cursor-pointer px-4 py-1.5 rounded-full transition-all border text-xs font-semibold shrink-0", selectedCategory === cat ? "bg-blue-600 hover:bg-blue-700 text-white border-transparent shadow-md shadow-blue-500/20" : "bg-white hover:bg-gray-50 text-gray-600 border-gray-200 hover:border-blue-300")} onClick={() => setSelectedCategory(cat)}>{cat}</Badge>))}</div></ScrollArea>
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-                        {loading ? (<div className="flex h-full items-center justify-center"><div className="text-center space-y-3"><Loader2 className="animate-spin h-10 w-10 text-blue-500 mx-auto" /><p className="text-sm text-gray-500">Cargando catálogo...</p></div></div>) : filteredProducts.length === 0 ? (<div className="flex h-full items-center justify-center"><div className="text-center space-y-3"><Package className="h-12 w-12 text-gray-300 mx-auto" /><p className="text-gray-500">No se encontraron productos</p><Button variant="outline" size="sm" onClick={() => { setSearchQuery(""); setSelectedCategory("Todos") }}>Limpiar filtros</Button></div></div>) : (<><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pb-6">{displayedProducts.map((product) => (<ProductCard key={product.id} product={product} onAdd={addToCart} />))}</div>{visibleCount < filteredProducts.length && (<div className="flex justify-center pb-24 md:pb-12"><Button onClick={handleLoadMore} variant="outline" className="min-w-[200px] rounded-full border-blue-200 text-blue-600 bg-white hover:bg-blue-50 font-bold shadow-sm h-12"><ChevronDown className="mr-2 h-4 w-4" /> Cargar más productos</Button></div>)}</>)}
+                        {loading ? (<div className="flex h-full items-center justify-center"><div className="text-center space-y-3"><Loader2 className="animate-spin h-10 w-10 text-blue-500 mx-auto" /><p className="text-sm text-gray-500">Cargando catálogo...</p></div></div>) : filteredProducts.length === 0 ? (<div className="flex h-full items-center justify-center"><div className="text-center space-y-3"><Package className="h-12 w-12 text-gray-300 mx-auto" /><p className="text-gray-500">No se encontraron productos</p><Button variant="outline" size="sm" onClick={() => { setSearchQuery(""); setSelectedCategory("Todos"); setAvailability("all") }}>Limpiar filtros</Button></div></div>) : (<><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 pb-6">{displayedProducts.map((product) => (<ProductCard key={product.id} product={product} onAdd={addToCart} />))}</div>{visibleCount < filteredProducts.length && (<div className="flex justify-center pb-24 md:pb-12"><Button onClick={handleLoadMore} variant="outline" className="min-w-[200px] rounded-full border-blue-200 text-blue-600 bg-white hover:bg-blue-50 font-bold shadow-sm h-12"><ChevronDown className="mr-2 h-4 w-4" /> Cargar más productos</Button></div>)}</>)}
                     </div>
                 </div>
 
@@ -239,6 +291,7 @@ export function CotizadorClient() {
                         </SheetContent>
                     </Sheet>
                 </div>
+            </div>
             </div>
         </>
     )
