@@ -58,6 +58,7 @@ export function ProductCatalog() {
     const [currentPage, setCurrentPage] = useState(1)
 
     const gridTopRef = useRef<HTMLDivElement>(null)
+    const isInitialMount = useRef(true)
 
     // 1. Carga de datos — usa caché compartida para no re-scrapear en cada navegación
     useEffect(() => {
@@ -66,6 +67,37 @@ export function ProductCatalog() {
             .catch((err) => console.error("Error cargando catálogo:", err))
             .finally(() => setLoading(false))
     }, [])
+
+    // Restaurar filtros desde sessionStorage al montar (persiste al navegar al detalle y volver)
+    useEffect(() => {
+        try {
+            const saved = sessionStorage.getItem("yesmos-catalog-filters")
+            if (saved) {
+                const f = JSON.parse(saved)
+                if (f.searchQuery !== undefined) setSearchQuery(f.searchQuery)
+                if (f.selectedCategory !== undefined) setSelectedCategory(f.selectedCategory)
+                if (f.availability !== undefined) setAvailability(f.availability)
+                if (f.sortBy !== undefined) setSortBy(f.sortBy)
+                if (f.density !== undefined) setDensity(f.density)
+                if (f.currentPage !== undefined) setCurrentPage(f.currentPage)
+            }
+        } catch {}
+    }, [])
+
+    // Guardar filtros en sessionStorage al cambiar (se salta el primer render para no
+    // sobreescribir con defaults antes de que el efecto de restauración haya corrido)
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false
+            return
+        }
+        try {
+            sessionStorage.setItem(
+                "yesmos-catalog-filters",
+                JSON.stringify({ searchQuery, selectedCategory, availability, sortBy, density, currentPage }),
+            )
+        } catch {}
+    }, [searchQuery, selectedCategory, availability, sortBy, density, currentPage])
 
     // Volver a la página 1 al cambiar cualquier filtro u orden
     useEffect(() => {
@@ -117,7 +149,7 @@ export function ProductCatalog() {
                 sorted.sort((a, b) => b.price - a.price)
                 break
             case "name-asc":
-                sorted.sort((a, b) => a.name.localeCompare(b.name, "es"))
+                sorted.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase(), "es"))
                 break
         }
         return sorted
