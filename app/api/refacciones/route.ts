@@ -157,10 +157,11 @@ export async function GET() {
             const cells = $inv(row).find("td");
             if (cells.length < 9) return;
 
-            const barcode = cells.eq(2).text().trim();
-            const name    = cells.eq(3).text().trim();
-            const price   = parseFloat(cells.eq(6).text().replace(/[^0-9.]/g, "")) || 0;
-            const stock   = parseInt(cells.eq(8).text().trim(), 10) || 0;
+            const barcode   = cells.eq(2).text().trim();
+            const name      = cells.eq(3).text().trim();
+            const costPrice = parseFloat(cells.eq(5).text().replace(/[^0-9.]/g, "")) || 0;
+            const price     = parseFloat(cells.eq(6).text().replace(/[^0-9.]/g, "")) || 0;
+            const stock     = parseInt(cells.eq(8).text().trim(), 10) || 0;
 
             if (!name || name === "-") return;
 
@@ -169,6 +170,7 @@ export async function GET() {
                 barcode,
                 name,
                 price,
+                costPrice,
                 category: categorize(name),
                 image: "",
                 url: "#",

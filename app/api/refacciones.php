@@ -142,10 +142,11 @@ foreach ($rows as $row) {
     $cells = $xpath->query('.//td', $row);
     if ($cells->length < 9) continue;
 
-    $barcode = trim($cells->item(2)->textContent);
-    $name    = trim($cells->item(3)->textContent);
-    $price   = floatval(preg_replace('/[^0-9.]/', '', $cells->item(6)->textContent));
-    $stock   = intval(trim($cells->item(8)->textContent));
+    $barcode   = trim($cells->item(2)->textContent);
+    $name      = trim($cells->item(3)->textContent);
+    $costPrice = floatval(preg_replace('/[^0-9.]/', '', $cells->item(5)->textContent));
+    $price     = floatval(preg_replace('/[^0-9.]/', '', $cells->item(6)->textContent));
+    $stock     = intval(trim($cells->item(8)->textContent));
 
     if (empty($name) || $name === '-') continue;
 
@@ -168,6 +169,7 @@ foreach ($rows as $row) {
         'barcode'   => $barcode,
         'name'      => $name,
         'price'     => $price,
+        'costPrice' => $costPrice,
         'category'  => $cat,
         'image'     => '',    // se rellena abajo
         'url'       => '#',
