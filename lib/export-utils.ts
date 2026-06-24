@@ -11,15 +11,15 @@ export async function exportToExcel(products: Product[], filename = "planeacion-
     const XLSX = await import("xlsx")
 
     const rows = products.map((p) => ({
-        Producto: p.name,
+        "Código de barras": p.barcode ?? "",
+        Descripción: p.name,
         Categoría: p.category,
         Stock: p.stock ?? "",
         "Precio compra": p.costPrice ?? "",
-        "Código de barras": p.barcode ?? "",
     }))
 
     const worksheet = XLSX.utils.json_to_sheet(rows)
-    worksheet["!cols"] = [{ wch: 40 }, { wch: 18 }, { wch: 8 }, { wch: 10 }, { wch: 16 }]
+    worksheet["!cols"] = [{ wch: 16 }, { wch: 40 }, { wch: 18 }, { wch: 8 }, { wch: 10 }]
 
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "Stock bajo")
@@ -39,8 +39,14 @@ export async function exportToPdf(products: Product[], filename = "planeacion-st
 
     autoTable(doc, {
         startY: 26,
-        head: [["Producto", "Categoría", "Stock", "Precio compra"]],
-        body: products.map((p) => [p.name, p.category, String(p.stock ?? ""), `$${(p.costPrice ?? 0).toFixed(2)}`]),
+        head: [["Código de barras", "Descripción", "Categoría", "Stock", "Precio compra"]],
+        body: products.map((p) => [
+            p.barcode ?? "",
+            p.name,
+            p.category,
+            String(p.stock ?? ""),
+            `$${(p.costPrice ?? 0).toFixed(2)}`,
+        ]),
         styles: { fontSize: 8 },
         headStyles: { fillColor: [59, 130, 246] },
     })

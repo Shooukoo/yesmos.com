@@ -9,7 +9,9 @@ import {
     ArrowUpDown,
     FileSpreadsheet,
     FileText,
+    PackageCheck,
     PackageSearch,
+    PackageX,
     SlidersHorizontal,
     X,
     type LucideIcon,
@@ -40,9 +42,9 @@ import { cn } from "@/lib/utils"
 import { getProducts, type Product } from "@/lib/products-cache"
 import { exportToExcel, exportToPdf } from "@/lib/export-utils"
 
-const LOW_STOCK_MIN = 1
+const LOW_STOCK_MIN = 0
 const LOW_STOCK_MAX = 5
-const CRITICAL_STOCK_MAX = 2
+const CRITICAL_STOCK_MAX = 1
 const ITEMS_PER_PAGE = 35
 
 type SecondarySortKey = "cost" | "name"
@@ -51,6 +53,12 @@ type SortDir = "asc" | "desc"
 function stockBadgeVariant(stock: number) {
     return stock <= CRITICAL_STOCK_MAX ? "destructive" : "secondary"
 }
+
+const STAT_TONE_CLASSES = {
+    default: "bg-blue-50 text-[#3b82f6]",
+    warning: "bg-amber-50 text-amber-600",
+    destructive: "bg-red-50 text-red-600",
+} as const
 
 function StatCard({
     label,
@@ -61,16 +69,11 @@ function StatCard({
     label: string
     value: string | number
     icon: LucideIcon
-    tone?: "default" | "destructive"
+    tone?: keyof typeof STAT_TONE_CLASSES
 }) {
     return (
         <div className="flex items-center gap-3 rounded-2xl border border-gray-200/60 bg-white p-4 shadow-sm">
-            <div
-                className={cn(
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                    tone === "destructive" ? "bg-red-50 text-red-600" : "bg-blue-50 text-[#3b82f6]",
-                )}
-            >
+            <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", STAT_TONE_CLASSES[tone])}>
                 <Icon className="h-5 w-5" />
             </div>
             <div className="min-w-0">
@@ -83,8 +86,8 @@ function StatCard({
 
 function StatCardsSkeleton() {
     return (
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {Array.from({ length: 2 }).map((_, i) => (
+        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-[72px] rounded-2xl" />
             ))}
         </div>
@@ -148,7 +151,7 @@ export function PlaneacionClient() {
             .finally(() => setLoading(false))
     }, [])
 
-    // Stock bajo: solo 1-5 inclusive. 0 o más de 5 quedan fuera de la vista.
+    // Stock bajo: 0 (agotado) a 5 inclusive. Más de 5 queda fuera de la vista.
     const lowStockProducts = useMemo(() => {
         return products.filter(
             (p) =>
@@ -157,6 +160,28 @@ export function PlaneacionClient() {
                 p.stock <= LOW_STOCK_MAX,
         )
     }, [products])
+
+    // Subconjunto de stock bajo filtrado solo por categoría — los KPIs reaccionan a la
+    // categoría seleccionada, pero no al nivel de stock exacto (eso es lo que ellos desglosan).
+    const categoryFilteredProducts = useMemo(() => {
+        return selectedCategory === "Todos"
+            ? lowStockProducts
+            : lowStockProducts.filter((p) => p.category === selectedCategory)
+    }, [lowStockProducts, selectedCategory])
+
+    // Tres niveles de urgencia: 0 = surtir de inmediato, 1 = en riesgo, 2-5 = zona neutra.
+    const stockTierCounts = useMemo(() => {
+        let outOfStock = 0
+        let atRisk = 0
+        let neutral = 0
+        for (const p of categoryFilteredProducts) {
+            const s = p.stock ?? 0
+            if (s === 0) outOfStock++
+            else if (s === 1) atRisk++
+            else neutral++
+        }
+        return { outOfStock, atRisk, neutral }
+    }, [categoryFilteredProducts])
 
     const categoryCounts = useMemo(() => {
         const counts = new Map<string, number>()
@@ -169,13 +194,19 @@ export function PlaneacionClient() {
     const categories = useMemo(() => Array.from(categoryCounts.keys()).sort(), [categoryCounts])
 
     const filteredProducts = useMemo(() => {
-        let base =
-            selectedCategory === "Todos"
-                ? lowStockProducts
-                : lowStockProducts.filter((p) => p.category === selectedCategory)
+        let base: Product[]
 
-        if (stockFilter !== null) {
-            base = base.filter((p) => (p.stock ?? 0) === stockFilter)
+        if (stockFilter === LOW_STOCK_MAX) {
+            // En el extremo superior del slider, "5" se interpreta como "5 o más" —
+            // hay que salir del rango 0-5 y tomar del catálogo completo.
+            base = products.filter((p) => typeof p.stock === "number" && p.stock >= LOW_STOCK_MAX)
+            if (selectedCategory !== "Todos") {
+                base = base.filter((p) => p.category === selectedCategory)
+            }
+        } else if (stockFilter !== null) {
+            base = categoryFilteredProducts.filter((p) => (p.stock ?? 0) === stockFilter)
+        } else {
+            base = categoryFilteredProducts
         }
 
         return [...base].sort((a, b) => {
@@ -191,7 +222,7 @@ export function PlaneacionClient() {
             else diff = a.name.localeCompare(b.name)
             return secondarySort.dir === "asc" ? diff : -diff
         })
-    }, [lowStockProducts, selectedCategory, stockFilter, stockSortDir, secondarySort])
+    }, [products, categoryFilteredProducts, selectedCategory, stockFilter, stockSortDir, secondarySort])
 
     const hasResults = filteredProducts.length > 0
 
@@ -237,8 +268,20 @@ export function PlaneacionClient() {
                 {loading ? (
                     <StatCardsSkeleton />
                 ) : (
-                    <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <StatCard label="Productos en riesgo" value={lowStockProducts.length} icon={PackageSearch} />
+                    <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                        <StatCard
+                            label="Surtir de inmediato"
+                            value={stockTierCounts.outOfStock}
+                            icon={PackageX}
+                            tone="destructive"
+                        />
+                        <StatCard
+                            label="Productos en riesgo"
+                            value={stockTierCounts.atRisk}
+                            icon={AlertTriangle}
+                            tone="warning"
+                        />
+                        <StatCard label="Zona neutra" value={stockTierCounts.neutral} icon={PackageCheck} />
 
                         <div className="flex items-center gap-3 rounded-2xl border border-gray-200/60 bg-white p-4 shadow-sm">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#3b82f6]">
@@ -247,7 +290,9 @@ export function PlaneacionClient() {
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between gap-2">
                                     <p className="truncate text-xs font-medium text-gray-500">
-                                        {stockFilter === null ? "Nivel de stock: todos" : `Nivel de stock: ${stockFilter}`}
+                                        {stockFilter === null
+                                            ? "Nivel de stock: todos"
+                                            : `Nivel de stock: ${stockFilter}${stockFilter === LOW_STOCK_MAX ? "+" : ""}`}
                                     </p>
                                     {stockFilter !== null && (
                                         <button
@@ -275,7 +320,7 @@ export function PlaneacionClient() {
                                         (_, i) => LOW_STOCK_MIN + i,
                                     ).map((n) => (
                                         <span key={n} className={cn(stockFilter === n && "text-[#3b82f6]")}>
-                                            {n}
+                                            {n === LOW_STOCK_MAX ? `${n}+` : n}
                                         </span>
                                     ))}
                                 </div>
@@ -338,15 +383,15 @@ export function PlaneacionClient() {
                             <TableHeader>
                                 <TableRow className="bg-gray-50/60">
                                     <TableHead className="text-xs uppercase tracking-wide text-gray-500">
+                                        Código de barras
+                                    </TableHead>
+                                    <TableHead className="text-xs uppercase tracking-wide text-gray-500">
                                         <SortButton
-                                            label="Producto"
+                                            label="Descripción"
                                             active={secondarySort?.key === "name"}
                                             dir={secondarySort?.key === "name" ? secondarySort.dir : "asc"}
                                             onClick={() => toggleSecondarySort("name")}
                                         />
-                                    </TableHead>
-                                    <TableHead className="text-xs uppercase tracking-wide text-gray-500">
-                                        Categoría
                                     </TableHead>
                                     <TableHead className="text-xs uppercase tracking-wide text-gray-500">
                                         <SortButton
@@ -372,6 +417,9 @@ export function PlaneacionClient() {
                                     const critical = (p.stock ?? 0) <= CRITICAL_STOCK_MAX
                                     return (
                                         <TableRow key={p.id} className={cn(critical && "bg-red-50/40 hover:bg-red-50/70")}>
+                                            <TableCell className="py-3 text-sm text-gray-600 tabular-nums">
+                                                {p.barcode || "—"}
+                                            </TableCell>
                                             <TableCell className="max-w-md whitespace-normal py-3 text-base">
                                                 <Link
                                                     href={`/producto?id=${p.id}`}
@@ -379,14 +427,11 @@ export function PlaneacionClient() {
                                                 >
                                                     {p.name}
                                                 </Link>
-                                                {p.barcode && (
-                                                    <p className="mt-0.5 text-sm text-gray-400">Cód: {p.barcode}</p>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="py-3">
-                                                <Badge variant="outline" className="text-sm font-normal text-gray-600">
-                                                    {p.category}
-                                                </Badge>
+                                                <div className="mt-1">
+                                                    <Badge variant="outline" className="text-sm font-normal text-gray-600">
+                                                        {p.category}
+                                                    </Badge>
+                                                </div>
                                             </TableCell>
                                             <TableCell className="py-3">
                                                 <Badge variant={stockBadgeVariant(p.stock ?? 0)} className="text-sm tabular-nums">
