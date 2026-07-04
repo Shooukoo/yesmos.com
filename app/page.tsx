@@ -16,15 +16,15 @@ export default function Home() {
     <div className="flex min-h-screen flex-col bg-[#f9fafb]">
       <Header />
       <main className="flex-1">
-        
-        
-        {/* Reemplazamos el carrusel por el catálogo completo */}
-        <ProductCatalog />
+
 
         {/* NEW: Legal banner warning about wholesale pricing */}
         <div className="container px-4 md:px-6 mx-auto">
           <LegalBanner />
         </div>
+
+        {/* Reemplazamos el carrusel por el catálogo completo */}
+        <ProductCatalog />
 
         <Hero />
         
