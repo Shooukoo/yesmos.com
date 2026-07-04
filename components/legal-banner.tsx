@@ -43,9 +43,8 @@ export function LegalBanner() {
             </div>
           </div>
 
-          {/* Right column: Geometric visual (hidden on mobile, visible on desktop) */}
+          {/* Right column: Spacing column for desktop layout (pattern rendered at section level) */}
           <div className="hidden md:flex items-center justify-center min-h-[240px]">
-            {/* SVG pattern fills this container via GeometricPattern's absolute positioning */}
           </div>
         </div>
       </div>
