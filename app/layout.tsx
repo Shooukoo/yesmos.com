@@ -3,9 +3,10 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Suspense } from "react"
 import { Toaster } from "@/components/ui/sonner"
-import { Inter } from 'next/font/google'
+import { Inter, Source_Serif_4 } from 'next/font/google'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
+const serif = Source_Serif_4({ subsets: ['latin'], variable: '--font-serif' })
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -145,7 +146,7 @@ export default function RootLayout({
 
   return (
     <html lang="es">
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${serif.variable} font-sans antialiased`}>
         {/* Script JSON-LD inyectado para SEO */}
         <script
           type="application/ld+json"
