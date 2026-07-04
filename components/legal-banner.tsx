@@ -5,12 +5,12 @@ import { GeometricPattern } from '@/components/ui/geometric-pattern'
 
 export function LegalBanner() {
   return (
-    <section className="relative bg-gradient-to-b from-[#3b82f6] to-[#2563eb] overflow-hidden">
+    <section className="relative bg-gradient-to-b from-[#3b82f6] to-[#2563eb] overflow-hidden mt-12 md:mt-16 mb-6 md:mb-8">
       {/* Geometric pattern background */}
       <GeometricPattern />
 
       {/* Content container with relative positioning (above pattern) */}
-      <div className="relative z-10 container mx-auto px-5 py-12 sm:px-10 sm:py-16 md:py-20 lg:px-12">
+      <div className="relative z-10 container mx-auto px-5 py-8 sm:px-10 sm:py-10 md:py-12 lg:px-12">
         {/* Desktop: Grid 2 columns, Mobile: Flex column */}
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-12 items-center">
           {/* Left column: Text content */}
@@ -44,7 +44,7 @@ export function LegalBanner() {
           </div>
 
           {/* Right column: Spacing column for desktop layout (pattern rendered at section level) */}
-          <div className="hidden md:flex items-center justify-center min-h-[240px]">
+          <div className="hidden md:flex items-center justify-center min-h-[100px]">
           </div>
         </div>
       </div>

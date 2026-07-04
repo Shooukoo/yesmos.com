@@ -45,7 +45,7 @@ export default function AvisoLegal() {
       <section id="marcas" className="mb-10">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">2. Disclaimer de Marcas</h2>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-4">
-          <p className="text-gray-700 font-semibold mb-2">⚠️ Aviso Importante</p>
+          <p className="text-gray-700 font-semibold mb-2">Aviso Importante</p>
           <p className="text-gray-700">
             <strong>Yesmos Celulares NO es distribuidor oficial</strong> de Apple, Samsung, OPPO, Huawei, Honor, ZTE ni de otras marcas de fabricantes de dispositivos móviles.
           </p>

@@ -173,9 +173,7 @@ export function ProductCatalog() {
         <>
             <CatalogHeader />
 
-            <div className="container px-4 md:px-6 mx-auto">
-                <LegalBanner />
-            </div>
+            <LegalBanner />
 
             <section className="container mx-auto px-4 py-8" id="catalogo">
                 {/* Barra de Búsqueda */}

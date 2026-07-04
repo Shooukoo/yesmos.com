@@ -25,7 +25,7 @@ export default function Garantia() {
         <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Garantía de Refacciones</h2>
 
         <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-          <h3 className="font-bold text-green-900 mb-3">✓ Cubrimos defectos de fabricación por 30 días</h3>
+          <h3 className="font-bold text-green-900 mb-3">Cubrimos defectos de fabricación por 30 días</h3>
         </div>
 
         <div className="space-y-6">
@@ -65,7 +65,7 @@ export default function Garantia() {
         <div className="space-y-8">
           {/* Pantallas */}
           <div>
-            <h3 className="font-bold text-red-600 mb-3">❌ PANTALLAS: SIN GARANTÍA</h3>
+            <h3 className="font-bold text-red-600 mb-3">PANTALLAS: SIN GARANTÍA</h3>
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <p className="text-gray-700">
                 No ofrecemos garantía en reparaciones de pantallas. Una vez que instalamos la pantalla, la garantía sobre daños es responsabilidad del cliente.
@@ -75,7 +75,7 @@ export default function Garantia() {
 
           {/* Otras Reparaciones */}
           <div>
-            <h3 className="font-bold text-green-600 mb-3">✓ OTRAS REPARACIONES: SÍ, CON CONDICIONES</h3>
+            <h3 className="font-bold text-green-600 mb-3">OTRAS REPARACIONES: SÍ, CON CONDICIONES</h3>
 
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
               <p className="text-gray-700">
@@ -136,7 +136,7 @@ export default function Garantia() {
         </div>
 
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <p className="text-blue-900 font-semibold mb-2">💬 Contacto para Garantía:</p>
+          <p className="text-blue-900 font-semibold mb-2">Contacto para Garantía:</p>
           <ul className="text-gray-700 space-y-1">
             <li><strong>WhatsApp:</strong> +52 353 184 4881</li>
             <li><strong>Teléfono:</strong> +52 353 184 4881</li>
