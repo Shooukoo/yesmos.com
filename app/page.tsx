@@ -1,6 +1,7 @@
 import { Header } from "@/components/header"
 import { Hero } from "@/components/hero"
 import { ProductCatalog } from "@/components/product-catalog"
+import { LegalBanner } from "@/components/legal-banner"
 import { ServicesSection } from "@/components/services-section"
 import { Footer } from "@/components/footer"
 import type { Metadata } from "next"
@@ -19,6 +20,11 @@ export default function Home() {
         
         {/* Reemplazamos el carrusel por el catálogo completo */}
         <ProductCatalog />
+
+        {/* NEW: Legal banner warning about wholesale pricing */}
+        <div className="container px-4 md:px-6 mx-auto">
+          <LegalBanner />
+        </div>
 
         <Hero />
         

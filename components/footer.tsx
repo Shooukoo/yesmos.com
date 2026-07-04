@@ -5,7 +5,7 @@ export function Footer() {
   return (
     <footer className="bg-[#111827] text-white py-12">
       <div className="container px-4 md:px-6 mx-auto">
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-4">
             <h3 className="text-2xl font-bold text-[#3b82f6]">Yesmos.com</h3>
             <p className="text-gray-400 text-sm">
@@ -61,6 +61,32 @@ export function Footer() {
               <li>Venta de Refacciones</li>
               <li>Accesorios</li>
               <li>Desbloqueos</li>
+            </ul>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="text-lg font-semibold">Legal</h4>
+            <ul className="space-y-2 text-sm text-gray-400">
+              <li>
+                <Link href="/legal/terminos-condiciones" className="hover:text-[#3b82f6] transition-colors">
+                  Términos y Condiciones
+                </Link>
+              </li>
+              <li>
+                <Link href="/legal/aviso-legal" className="hover:text-[#3b82f6] transition-colors">
+                  Aviso Legal
+                </Link>
+              </li>
+              <li>
+                <Link href="/legal/precios-servicios" className="hover:text-[#3b82f6] transition-colors">
+                  Precios y Servicios
+                </Link>
+              </li>
+              <li>
+                <Link href="/legal/garantia" className="hover:text-[#3b82f6] transition-colors">
+                  Política de Garantía
+                </Link>
+              </li>
             </ul>
           </div>
 
