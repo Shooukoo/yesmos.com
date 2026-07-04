@@ -1,31 +1,54 @@
-import { AlertTriangle } from 'lucide-react'
+'use client'
+
 import Link from 'next/link'
+import { GeometricPattern } from '@/components/ui/geometric-pattern'
 
 export function LegalBanner() {
   return (
-    <div className="bg-red-50 border-l-4 border-red-500 p-6 my-8">
-      <div className="container px-4 md:px-6 mx-auto">
-        <div className="flex items-start gap-4">
-          <AlertTriangle className="text-red-600 shrink-0 mt-1" size={24} />
-          <div className="flex-1">
-            <h3 className="text-lg font-bold text-red-900 mb-2">
-              ⚠️ IMPORTANTE: Precios Mayoristas
+    <section className="relative bg-gradient-to-b from-[#3b82f6] to-[#2563eb] overflow-hidden">
+      {/* Geometric pattern background */}
+      <GeometricPattern />
+
+      {/* Content container with relative positioning (above pattern) */}
+      <div className="relative z-10 container mx-auto px-5 py-12 sm:px-10 sm:py-16 md:py-20 lg:px-12">
+        {/* Desktop: Grid 2 columns, Mobile: Flex column */}
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-12 items-center">
+          {/* Left column: Text content */}
+          <div className="flex flex-col justify-center">
+            {/* Headline: Serif, bold, white */}
+            <h3 className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight leading-tight">
+              IMPORTANTE: Precios Mayoristas
             </h3>
-            <p className="text-red-800 mb-4">
-              Los precios mostrados arriba son tarifa <strong>mayorista exclusiva para reparadores profesionales</strong> de la región.
+
+            {/* Body text: Inter, off-white */}
+            <p className="text-base sm:text-lg text-[#f8f6f1] font-medium mb-3 leading-relaxed">
+              Los precios mostrados son tarifa{' '}
+              <strong className="font-bold">exclusiva para reparadores profesionales</strong> de la
+              región.
             </p>
-            <p className="text-red-800 mb-4">
-              ¿Eres cliente final? Usa nuestro cotizador para ver precios al público.
+
+            {/* Secondary text: Slightly recessed */}
+            <p className="text-sm sm:text-base text-[#f8f6f1] text-opacity-85 mb-6 leading-relaxed">
+              ¿Eres cliente final? Usa nuestro cotizador para ver precios especiales al público.
             </p>
-            <Link
-              href="/cotizaciones"
-              className="inline-flex h-10 items-center justify-center rounded-lg bg-red-600 text-white px-6 font-semibold hover:bg-red-700 transition-colors"
-            >
-              Ver precios al público →
-            </Link>
+
+            {/* Button: White background, blue text */}
+            <div className="flex">
+              <Link
+                href="/cotizaciones"
+                className="inline-flex h-11 items-center justify-center rounded-lg bg-white text-[#3b82f6] px-7 font-semibold hover:bg-opacity-90 active:scale-95 transition-all duration-150 cursor-pointer shadow-sm hover:shadow-md hover:shadow-[rgba(59,130,246,0.15)] select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                Ver precios al público →
+              </Link>
+            </div>
+          </div>
+
+          {/* Right column: Geometric visual (hidden on mobile, visible on desktop) */}
+          <div className="hidden md:flex items-center justify-center min-h-[240px]">
+            {/* SVG pattern fills this container via GeometricPattern's absolute positioning */}
           </div>
         </div>
       </div>
-    </div>
+    </section>
   )
 }
