@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getProducts, type Product } from "@/lib/products-cache"
 import { CatalogHeader } from "@/components/catalog/catalog-header"
-import { LegalBanner } from "@/components/legal-banner"
 import {
     CatalogToolbar,
     type SortOption,
@@ -172,8 +171,6 @@ export function ProductCatalog() {
     return (
         <>
             <CatalogHeader />
-
-            <LegalBanner />
 
             <section className="container mx-auto px-4 py-8" id="catalogo">
                 {/* Barra de Búsqueda */}

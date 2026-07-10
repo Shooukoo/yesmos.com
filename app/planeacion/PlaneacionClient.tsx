@@ -12,6 +12,7 @@ import {
     PackageCheck,
     PackageSearch,
     PackageX,
+    Search,
     SlidersHorizontal,
     X,
     type LucideIcon,
@@ -20,6 +21,7 @@ import { CatalogPagination } from "@/components/catalog/catalog-pagination"
 import { Header } from "@/components/header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
     Select,
@@ -46,12 +48,32 @@ const LOW_STOCK_MIN = 0
 const LOW_STOCK_MAX = 5
 const CRITICAL_STOCK_MAX = 1
 const ITEMS_PER_PAGE = 35
+const FILTERS_STORAGE_KEY = "yesmos-planeacion-filters"
 
 type SecondarySortKey = "cost" | "name"
 type SortDir = "asc" | "desc"
 
+function normalizeText(text: string) {
+    return text
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+}
+
 function stockBadgeVariant(stock: number) {
     return stock <= CRITICAL_STOCK_MAX ? "destructive" : "secondary"
+}
+
+// El nombre se compara palabra por palabra (permite "ip 16 pro" -> "Display IP 16 Pro"),
+// pero el código de barras se compara como cadena completa: trocearlo por palabra generaba
+// falsos positivos (p. ej. "16" es subcadena casual de un barcode "03169" sin relación real).
+function matchesQuery(product: Product, terms: string[], barcodeQuery: string) {
+    if (terms.length === 0) return true
+    const cleanName = normalizeText(product.name)
+    if (terms.every((term) => cleanName.includes(term))) return true
+    if (!barcodeQuery) return false
+    const cleanBarcode = product.barcode ? normalizeText(product.barcode) : ""
+    return cleanBarcode.includes(barcodeQuery)
 }
 
 const STAT_TONE_CLASSES = {
@@ -136,6 +158,7 @@ function SortButton({
 export function PlaneacionClient() {
     const [products, setProducts] = useState<Product[]>([])
     const [loading, setLoading] = useState(true)
+    const [searchQuery, setSearchQuery] = useState("")
     const [selectedCategory, setSelectedCategory] = useState<string>("Todos")
     const [stockFilter, setStockFilter] = useState<number | null>(null)
     const [stockSortDir, setStockSortDir] = useState<SortDir>("asc")
@@ -143,6 +166,7 @@ export function PlaneacionClient() {
     const [currentPage, setCurrentPage] = useState(1)
 
     const tableTopRef = useRef<HTMLDivElement>(null)
+    const isInitialMount = useRef(true)
 
     useEffect(() => {
         getProducts()
@@ -150,6 +174,39 @@ export function PlaneacionClient() {
             .catch((err) => console.error("Error cargando catálogo:", err))
             .finally(() => setLoading(false))
     }, [])
+
+    // Restaurar filtros desde sessionStorage al montar (persiste al cambiar de pestaña o cerrar el sitio)
+    useEffect(() => {
+        try {
+            const saved = sessionStorage.getItem(FILTERS_STORAGE_KEY)
+            if (saved) {
+                const f = JSON.parse(saved)
+                if (f.searchQuery !== undefined) setSearchQuery(f.searchQuery)
+                if (f.selectedCategory !== undefined) setSelectedCategory(f.selectedCategory)
+                if (f.stockFilter !== undefined) setStockFilter(f.stockFilter)
+                if (f.stockSortDir !== undefined) setStockSortDir(f.stockSortDir)
+                if (f.secondarySort !== undefined) setSecondarySort(f.secondarySort)
+            }
+        } catch {}
+    }, [])
+
+    // Guardar filtros en sessionStorage al cambiar (se salta el primer render para no
+    // sobreescribir con defaults antes de que el efecto de restauración haya corrido)
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false
+            return
+        }
+        try {
+            sessionStorage.setItem(
+                FILTERS_STORAGE_KEY,
+                JSON.stringify({ searchQuery, selectedCategory, stockFilter, stockSortDir, secondarySort }),
+            )
+        } catch {}
+    }, [searchQuery, selectedCategory, stockFilter, stockSortDir, secondarySort])
+
+    const queryTerms = useMemo(() => normalizeText(searchQuery).split(" ").filter(Boolean), [searchQuery])
+    const barcodeQuery = useMemo(() => queryTerms.join(""), [queryTerms])
 
     // Stock bajo: 0 (agotado) a 5 inclusive. Más de 5 queda fuera de la vista.
     const lowStockProducts = useMemo(() => {
@@ -161,13 +218,14 @@ export function PlaneacionClient() {
         )
     }, [products])
 
-    // Subconjunto de stock bajo filtrado solo por categoría — los KPIs reaccionan a la
-    // categoría seleccionada, pero no al nivel de stock exacto (eso es lo que ellos desglosan).
+    // Subconjunto de stock bajo filtrado por categoría y búsqueda — los KPIs reaccionan a
+    // ambos, pero no al nivel de stock exacto (eso es lo que ellos desglosan).
     const categoryFilteredProducts = useMemo(() => {
-        return selectedCategory === "Todos"
+        const base = selectedCategory === "Todos"
             ? lowStockProducts
             : lowStockProducts.filter((p) => p.category === selectedCategory)
-    }, [lowStockProducts, selectedCategory])
+        return base.filter((p) => matchesQuery(p, queryTerms, barcodeQuery))
+    }, [lowStockProducts, selectedCategory, queryTerms, barcodeQuery])
 
     // Tres niveles de urgencia: 0 = surtir de inmediato, 1 = en riesgo, 2-5 = zona neutra.
     const stockTierCounts = useMemo(() => {
@@ -203,6 +261,7 @@ export function PlaneacionClient() {
             if (selectedCategory !== "Todos") {
                 base = base.filter((p) => p.category === selectedCategory)
             }
+            base = base.filter((p) => matchesQuery(p, queryTerms, barcodeQuery))
         } else if (stockFilter !== null) {
             base = categoryFilteredProducts.filter((p) => (p.stock ?? 0) === stockFilter)
         } else {
@@ -222,14 +281,14 @@ export function PlaneacionClient() {
             else diff = a.name.localeCompare(b.name)
             return secondarySort.dir === "asc" ? diff : -diff
         })
-    }, [products, categoryFilteredProducts, selectedCategory, stockFilter, stockSortDir, secondarySort])
+    }, [products, categoryFilteredProducts, selectedCategory, stockFilter, stockSortDir, secondarySort, queryTerms, barcodeQuery])
 
     const hasResults = filteredProducts.length > 0
 
     // Volver a la página 1 al cambiar cualquier filtro u orden
     useEffect(() => {
         setCurrentPage(1)
-    }, [selectedCategory, stockFilter, stockSortDir, secondarySort])
+    }, [searchQuery, selectedCategory, stockFilter, stockSortDir, secondarySort])
 
     const totalPages = Math.max(1, Math.ceil(filteredProducts.length / ITEMS_PER_PAGE))
     const safePage = Math.min(currentPage, totalPages)
@@ -333,26 +392,48 @@ export function PlaneacionClient() {
 
                 <div className="overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-sm">
                     <div className="flex flex-wrap items-end justify-between gap-4 border-b border-gray-200/60 px-5 py-4">
-                        <div className="flex min-w-0 flex-col gap-1.5">
-                            <Label
-                                htmlFor="filtro-categoria-planeacion"
-                                className="text-xs font-medium uppercase tracking-wide text-gray-500"
-                            >
-                                Categoría
-                            </Label>
-                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                <SelectTrigger id="filtro-categoria-planeacion" className="h-11 w-[220px] bg-white">
-                                    <SelectValue placeholder="Categoría" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Todos">Todos ({lowStockProducts.length})</SelectItem>
-                                    {categories.map((cat) => (
-                                        <SelectItem key={cat} value={cat}>
-                                            {cat} ({categoryCounts.get(cat)})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        <div className="flex flex-wrap items-end gap-4">
+                            <div className="flex min-w-0 flex-col gap-1.5">
+                                <Label
+                                    htmlFor="buscador-planeacion"
+                                    className="text-xs font-medium uppercase tracking-wide text-gray-500"
+                                >
+                                    Buscar
+                                </Label>
+                                <div className="relative w-[360px]">
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                    <Input
+                                        id="buscador-planeacion"
+                                        type="text"
+                                        placeholder="Nombre o código de barras..."
+                                        className="h-11 w-full rounded-md border-gray-200 bg-white pl-10 text-base focus-visible:ring-[#3b82f6]/30 focus-visible:border-[#3b82f6]"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex min-w-0 flex-col gap-1.5">
+                                <Label
+                                    htmlFor="filtro-categoria-planeacion"
+                                    className="text-xs font-medium uppercase tracking-wide text-gray-500"
+                                >
+                                    Categoría
+                                </Label>
+                                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                    <SelectTrigger id="filtro-categoria-planeacion" className="h-11 w-[220px] bg-white">
+                                        <SelectValue placeholder="Categoría" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Todos">Todos ({lowStockProducts.length})</SelectItem>
+                                        {categories.map((cat) => (
+                                            <SelectItem key={cat} value={cat}>
+                                                {cat} ({categoryCounts.get(cat)})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         <div className="flex items-center gap-3">
@@ -450,7 +531,11 @@ export function PlaneacionClient() {
                     ) : (
                         <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
                             <PackageSearch className="h-8 w-8 text-gray-400" />
-                            <p className="text-sm text-gray-500">No hay productos con stock bajo en esta categoría.</p>
+                            <p className="text-sm text-gray-500">
+                                {queryTerms.length > 0
+                                    ? "No hay productos con stock bajo que coincidan con la búsqueda."
+                                    : "No hay productos con stock bajo en esta categoría."}
+                            </p>
                         </div>
                     )}
 

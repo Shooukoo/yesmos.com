@@ -3,6 +3,7 @@ import { Hero } from "@/components/hero"
 import { ProductCatalog } from "@/components/product-catalog"
 import { ServicesSection } from "@/components/services-section"
 import { Footer } from "@/components/footer"
+import { PriceModal } from "@/components/price-modal"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-[#f9fafb]">
+      <PriceModal />
       <Header />
       <main className="flex-1">
 
